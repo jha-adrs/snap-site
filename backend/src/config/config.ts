@@ -32,6 +32,9 @@ const envVarsSchema = z.object({
     SMTP_USERNAME: z.string().describe('username for email server'),
     SMTP_PASSWORD: z.string().describe('password for email server'),
     EMAIL_FROM: z.string().describe('the from field in the emails sent by the app'),
+    REDIS_HOST: z.string().default('localhost').describe('redis host'),
+    REDIS_PORT: z.coerce.number().default(6379).describe('redis port'),
+    REDIS_PASSWORD: z.string().describe('redis password'),
 });
 
 // Validate env vars
@@ -61,5 +64,10 @@ export default {
             },
         },
         from: envVars.data.EMAIL_FROM,
+    },
+    redis: {
+        host: envVars.data.REDIS_HOST,
+        port: envVars.data.REDIS_PORT,
+        password: envVars.data.REDIS_PASSWORD,
     },
 };
