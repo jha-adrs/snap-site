@@ -11,16 +11,16 @@ datasource db {
 }
 
 model User {
-  id              Int      @id @default(autoincrement())
-  email           String   @unique
+  id              Int            @id @default(autoincrement())
+  email           String         @unique
   name            String?
   password        String
-  role            Role     @default(USER)
-  isEmailVerified Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  role            Role           @default(USER)
+  isEmailVerified Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
   imageUrl        String?
-
+  isActive        Boolean        @default(true)
   Token           Token[]
   Organization    Organization[]
 }
@@ -53,7 +53,125 @@ model Organization {
   name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  creatorId Int @unique
-  creator User @relation(fields: [creatorId], references: [id])
-  
+  creatorId Int      @unique
+  creator   User     @relation(fields: [creatorId], references: [id])
+}
+
+model Domains {
+  id       Int          @id @default(autoincrement())
+  name     String?
+  domain   String       @unique
+  isActive Boolean      @default(false)
+  status   DomainStatus @default(NOT_CONFIGURED)
+
+  storeImages Boolean @default(false)
+
+  priceElement       Json               @default("{}") // Store price element in the website
+  priceElementStatus PriceElementStatus @default(NOT_FOUND) // If price element has been found or not, or is dynamically changing
+  Link               Links[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([domain])
+}
+
+enum DomainStatus {
+  CONFIGURED
+  NOT_CONFIGURED
+  EXCLUDED
+}
+
+enum PriceElementStatus {
+  SINGLE
+  MULTIPLE
+  NOT_FOUND
+}
+
+model Links {
+  id               Int     @id @default(autoincrement())
+  name             String
+  url              String
+  isActive         Boolean @default(false)
+  trackingImage    Boolean @default(false)
+  imageUrl         String?
+  hasConfigChanged Boolean @default(false) // If price element changes, then this will be true
+  timing           Timing  @default(WEEKLY)
+  domainId         Int
+  domain           Domains @relation(fields: [domainId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([domainId])
+  @@index([name])
+}
+
+enum Timing {
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+model UserLinkMap {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  linkId    Int
+  timing    Timing   @default(WEEKLY)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, linkId])
+  @@index([userId, linkId])
+}
+
+// TODO: Add organizationId to User 
+
+// Link Data
+
+model LinkData {
+  id           Int            @id @default(autoincrement())
+  status       LinkDataStatus @default(PENDING)
+  linkId       Int
+  data         Json           @default("{}")
+  images       Json           @default("{}") // Stores image URLs
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  failedReason String?
+
+  @@unique([linkId, createdAt])
+  @@index([linkId])
+}
+
+enum LinkDataStatus {
+  SUCCESS
+  FAILED
+  PENDING
+  CRON_FAILED
+}
+
+model Cron {
+  id        Int      @id @default(autoincrement())
+  timing    Timing   @default(WEEKLY)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CronHistory {
+  id            Int        @id @default(autoincrement())
+  links         Json       @default("{}") // List of all links that were processed
+  data          Json       @default("{}")
+  status        CronStatus @default(PENDING)
+  startTime     DateTime?
+  endTime       DateTime?
+  failureReason String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+enum CronStatus {
+  SUCCESS
+  PENDING
+  FAILED
 }
