@@ -3,7 +3,7 @@ import config from '@/config/config';
 
 // Add prisma to the NodeJS global type
 interface CustomNodeJsGlobal extends Global {
-	prisma: PrismaClient;
+    prisma: PrismaClient;
 }
 
 // Prevent multiple instances of Prisma Client in development
