@@ -23,6 +23,7 @@ model User {
   isActive        Boolean        @default(true)
   Token           Token[]
   Organization    Organization[]
+  Links           UserLinkMap[]
 }
 
 model Token {
@@ -68,7 +69,7 @@ model Domains {
 
   priceElement       Json               @default("{}") // Store price element in the website
   priceElementStatus PriceElementStatus @default(NOT_FOUND) // If price element has been found or not, or is dynamically changing
-  Link               Links[]
+  Links               Links[]
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
@@ -88,19 +89,19 @@ enum PriceElementStatus {
 }
 
 model Links {
-  id               Int     @id @default(autoincrement())
-  name             String
-  url              String
-  isActive         Boolean @default(false)
-  trackingImage    Boolean @default(false)
+  id               Int           @id @default(autoincrement())
+  name             String?
+  url              String         @db.LongText // How to check duplicate links??
+  isActive         Boolean       @default(false)
+  trackingImage    Boolean       @default(false)
   imageUrl         String?
-  hasConfigChanged Boolean @default(false) // If price element changes, then this will be true
-  timing           Timing  @default(WEEKLY)
+  hasConfigChanged Boolean       @default(false) // If price element changes, then this will be true
+  timing           Timing        @default(WEEKLY)
   domainId         Int
-  domain           Domains @relation(fields: [domainId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  domain           Domains       @relation(fields: [domainId], references: [id])
+  Users            UserLinkMap[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   @@index([domainId])
   @@index([name])
@@ -115,12 +116,16 @@ enum Timing {
 }
 
 model UserLinkMap {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  linkId    Int
-  timing    Timing   @default(WEEKLY)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           Int      @id @default(autoincrement())
+  assignedName String?
+  tags         String?
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id])
+  linkId       Int
+  link         Links    @relation(fields: [linkId], references: [id])
+  timing       Timing   @default(WEEKLY)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@unique([userId, linkId])
   @@index([userId, linkId])

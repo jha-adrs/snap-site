@@ -1,6 +1,10 @@
 import express from 'express';
 const router = express.Router();
 import { trackerController } from '@/controllers';
-router.route('/').post(trackerController.addLink);
-
+import auth from '@/middlewares/auth';
+import { trackerValidation } from '@/validations';
+import validate from '@/middlewares/validate';
+router.use(auth());
+router.get('/get-links', validate(trackerValidation.getLinks), trackerController.getLinks);
+router.post('/add-link', validate(trackerValidation.addLink), trackerController.addLink);
 export default router;
