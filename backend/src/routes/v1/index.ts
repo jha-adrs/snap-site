@@ -3,6 +3,7 @@ import authRoute from './auth.route';
 import userRoute from './user.route';
 import docsRoute from './docs.route';
 import trackerRoute from './tracker.route';
+import scrapeRoute from './scrape.route';
 import config from '@/config/config';
 
 const router = express.Router();
@@ -22,7 +23,8 @@ const defaultRoutes: any[] = [
     },
     {
         path: '/scrape',
-    }
+        route: scrapeRoute,
+    },
 ];
 
 const devRoutes = [

@@ -1,7 +1,9 @@
 import prisma from '@/client';
 import logger from '@/config/logger';
 import catchAsync from '@/utils/catchAsync';
+import getHash from '@/utils/link-shortener';
 import pick from '@/utils/pick';
+import getPrismaErrorMessage from '@/utils/prismaErrorHandler';
 import { trackerValidation } from '@/validations';
 import { User } from '@prisma/client';
 
@@ -44,8 +46,13 @@ const addLink = catchAsync(async (req, res) => {
         if (!data.url) {
             return res.status(400).send('Bad request');
         }
-        logger.info(`Add link ${JSON.stringify(data)} for user ${JSON.stringify(user)}`);
         const domain = new URL(data.url as string).hostname;
+        const hashedURL = await getHash(data.url as string, 6);
+        logger.info(
+            `Add link ${JSON.stringify(data)} for user ${JSON.stringify(
+                user
+            )} hashedURL ${JSON.stringify(hashedURL.hashedLink)}`
+        );
         const [createRes] = await prisma.$transaction(async (prisma) => {
             const domainRes = await prisma.domains.upsert({
                 where: {
@@ -64,6 +71,7 @@ const addLink = catchAsync(async (req, res) => {
                     trackingImage: data.trackingImage,
                     timing: data.timing,
                     domainId: domainRes.id,
+                    hashedUrl: hashedURL.hashedLink,
                 },
             });
 
@@ -83,6 +91,7 @@ const addLink = catchAsync(async (req, res) => {
         return res.status(200).send(createRes);
     } catch (error) {
         logger.error(`Error adding link ${JSON.stringify(error)}`);
+        getPrismaErrorMessage(error, null);
         return res.status(500).send('Internal server error');
     }
 });

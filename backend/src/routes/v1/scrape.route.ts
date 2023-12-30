@@ -1,6 +1,9 @@
 import auth from '@/middlewares/auth';
 import express from 'express';
+import { scrapeController } from '@/controllers';
 const router = express.Router();
 router.use(auth());
 // Loads data from website and saves it
-router.post('/scrape-link')
+router.post('/scrape-link', scrapeController.tryLink);
+
+export default router;
