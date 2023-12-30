@@ -20,6 +20,9 @@ const defaultRoutes: any[] = [
         path: '/tracker',
         route: trackerRoute,
     },
+    {
+        path: '/scrape',
+    }
 ];
 
 const devRoutes = [

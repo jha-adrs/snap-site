@@ -69,7 +69,7 @@ model Domains {
 
   priceElement       Json               @default("{}") // Store price element in the website
   priceElementStatus PriceElementStatus @default(NOT_FOUND) // If price element has been found or not, or is dynamically changing
-  Links               Links[]
+  Links              Links[]
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
@@ -91,11 +91,12 @@ enum PriceElementStatus {
 model Links {
   id               Int           @id @default(autoincrement())
   name             String?
-  url              String         @db.LongText // How to check duplicate links??
+  url              String        @db.LongText
+  hashedUrl        String        @unique
   isActive         Boolean       @default(false)
   trackingImage    Boolean       @default(false)
   imageUrl         String?
-  hasConfigChanged Boolean       @default(false) // If price element changes, then this will be true
+  hasConfigChanged Boolean       @default(false) // If price element changes, then this will be set to true
   timing           Timing        @default(WEEKLY)
   domainId         Int
   domain           Domains       @relation(fields: [domainId], references: [id])
@@ -105,6 +106,7 @@ model Links {
 
   @@index([domainId])
   @@index([name])
+  @@index([hashedUrl])
 }
 
 enum Timing {
