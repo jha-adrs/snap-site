@@ -11,6 +11,7 @@ const tryLink = catchAsync(async (req, res) => {
     const url = new URL(link);
     fullScrape({
         url: url.href,
+        hostname: url.hostname,
         priceElement: undefined,
         includeImages: false,
         includeVideos: false,

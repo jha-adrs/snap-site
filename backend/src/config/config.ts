@@ -35,6 +35,11 @@ const envVarsSchema = z.object({
     REDIS_HOST: z.string().default('localhost').describe('redis host'),
     REDIS_PORT: z.coerce.number().default(6379).describe('redis port'),
     REDIS_PASSWORD: z.string().describe('redis password'),
+    AWS_ACCESS_KEY_ID: z.string().describe('AWS access key ID'),
+    AWS_SECRET_ACCESS_KEY: z.string().describe('AWS secret access key'),
+    AWS_S3_BUCKET_NAME: z.string().describe('AWS S3 bucket name'),
+    AWS_BUCKET_REGION: z.string().default('us-east-1').describe('AWS S3 bucket region'),
+    HASHLENGTH: z.coerce.number().default(5).describe('Hash length for the shortened URL'),
 });
 
 // Validate env vars
@@ -69,5 +74,14 @@ export default {
         host: envVars.data.REDIS_HOST,
         port: envVars.data.REDIS_PORT,
         password: envVars.data.REDIS_PASSWORD,
+    },
+    aws: {
+        accessKeyId: envVars.data.AWS_ACCESS_KEY_ID,
+        secretAccessKey: envVars.data.AWS_SECRET_ACCESS_KEY,
+        s3BucketName: envVars.data.AWS_S3_BUCKET_NAME,
+        region: envVars.data.AWS_BUCKET_REGION,
+    },
+    scraper: {
+        hashLength: envVars.data.HASHLENGTH,
     },
 };

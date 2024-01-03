@@ -27,8 +27,24 @@ const getLinks = z.object({
     }),
 });
 
+const getLink = z.object({
+    params: z.object({
+        id: z.string().min(1),
+        date: z.string().min(1).optional(),
+    }),
+});
+
+const getLinkHistory = z.object({
+    params: z.object({
+        url: z.string().min(1),
+        type: z.enum(['HASHED', 'ORIGINAL']).default('HASHED').optional(),
+    }),
+});
+
 export default {
     addDomain,
     addLink,
     getLinks,
+    getLink,
+    getLinkHistory,
 };

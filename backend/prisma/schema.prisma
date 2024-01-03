@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "mysql"  
   url      = env("DATABASE_URL")
 }
 
@@ -103,7 +103,7 @@ model Links {
   Users            UserLinkMap[]
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
-
+  linkData          LinkData[]
   @@index([domainId])
   @@index([name])
   @@index([hashedUrl])
@@ -114,7 +114,6 @@ enum Timing {
   DAILY
   WEEKLY
   MONTHLY
-  YEARLY
 }
 
 model UserLinkMap {
@@ -140,15 +139,18 @@ model UserLinkMap {
 model LinkData {
   id           Int            @id @default(autoincrement())
   status       LinkDataStatus @default(PENDING)
-  linkId       Int
-  data         Json           @default("{}")
+  objectKey    String         @db.LongText // URL of the page that was scraped and saved
   images       Json           @default("{}") // Stores image URLs
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   failedReason String?
+  metadata     Json           @default("{}") // Stores metadata of the page
+  hashedUrl    String
+  link         Links          @relation(fields: [hashedUrl], references: [hashedUrl])
 
-  @@unique([linkId, createdAt])
-  @@index([linkId])
+  @@unique([hashedUrl, createdAt])
+  @@index([hashedUrl])
+  @@index([createdAt])
 }
 
 enum LinkDataStatus {
