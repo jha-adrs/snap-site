@@ -1,6 +1,6 @@
 import prisma from '@/client';
 import logger from '@/config/logger';
-import { fullScrape } from '@/scripts/scraper';
+import { fullScrape, takeScreenshot } from '@/scripts/scraper';
 import { fileService } from '@/services';
 import catchAsync from '@/utils/catchAsync';
 import getHash from '@/utils/link-shortener';
@@ -59,6 +59,7 @@ const addLink = catchAsync(async (req, res) => {
             includeImages: trackingImage,
         };
         const fileResponse = await fullScrape(scrapeParams);
+        //const ssResponse = await takeScreenshot({ url, hostname: urlObj.hostname });
         if (fileResponse.success === 0 || !fileResponse.fileResponse) {
             return res.status(500).send({ message: fileResponse.error });
         }
@@ -165,8 +166,7 @@ const getLinkHistory = catchAsync(async (req, res) => {
     }
     return res.status(200).json({
         success: 1,
-
-    })
+    });
 });
 
 export default {

@@ -19,7 +19,7 @@ const addLink = z.object({
 const getLinks = z.object({
     query: z.object({
         name: z.string().min(1).optional(),
-        timing: z.enum(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']).optional(),
+        timing: z.enum(['DAILY', 'WEEKLY', 'MONTHLY']).optional(),
         sortBy: z.enum(['createdAt', 'name']).optional(),
         sortOrder: z.enum(['asc', 'desc']).optional(),
         limit: z.coerce.number().int().min(1).max(100).optional(),

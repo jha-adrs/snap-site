@@ -110,7 +110,6 @@ model Links {
 }
 
 enum Timing {
-  HOURLY
   DAILY
   WEEKLY
   MONTHLY
@@ -140,7 +139,7 @@ model LinkData {
   id           Int            @id @default(autoincrement())
   status       LinkDataStatus @default(PENDING)
   objectKey    String         @db.LongText // URL of the page that was scraped and saved
-  images       Json           @default("{}") // Stores image URLs
+  images       Json           @default("{}") // Stores image URLs of the page
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   failedReason String?

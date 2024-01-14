@@ -7,6 +7,7 @@ import {
     PutObjectCommand,
     S3Client,
 } from '@aws-sdk/client-s3';
+import { fileTypeFromBuffer } from 'file-type';
 
 const client = new S3Client({
     region: config.aws.region,
@@ -23,34 +24,41 @@ const listBuckets = async () => {
     return response;
 };
 
-export interface UploadHTMLFileParams {
+export interface UploadFileParams {
     fileName: string;
     file: Buffer;
     domainName: string;
     originalUrl: string;
     hashedUrl: string;
+    fileType?: string;
 }
-//Sanitize the html to exclude JS
-const uploadHTMLFile = async ({
+
+const uploadFile = async ({
     domainName,
     file,
     hashedUrl,
     originalUrl,
-}: UploadHTMLFileParams) => {
+    fileType,
+}: UploadFileParams) => {
     try {
-        logger.info('Uploading HTML File', { domainName, hashedUrl, originalUrl });
-        const key = `${domainName}/${hashedUrl}/${Date.now()}.html`;
+        logger.info('Uploading HTML File', { domainName, hashedUrl, originalUrl, fileType });
+        if (!fileType) {
+            const type = await fileTypeFromBuffer(file);
+            fileType = type ? type.ext : 'bin';
+        }
+        const timestamp = Date.now();
+        const key = `${domainName}/${hashedUrl}/${timestamp}.${fileType}`;
         const metadata = {
             originalUrl,
             hashedUrl,
-            timestamp: Date.now().toString(),
+            timestamp: timestamp.toString(),
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         };
         const command = new PutObjectCommand({
             Key: key,
             ACL: 'bucket-owner-read',
             Bucket: config.aws.s3BucketName,
-            ContentType: 'text/html',
+            //ContentType: 'text/html',
             Body: file,
             StorageClass: 'INTELLIGENT_TIERING',
             Metadata: metadata,
@@ -109,7 +117,7 @@ const getS3Object = async ({ key, bucketName, contentEncoding }: GetS3ObjectPara
 
 export default {
     listBuckets,
-    uploadHTMLFile,
+    uploadFile,
     getS3Domains,
     getS3Object,
 };
