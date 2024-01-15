@@ -2,6 +2,7 @@ import logger from '@/config/logger';
 import dailyQueueJob, { dailyQueue } from './daily-links';
 import weeklyQueueJob, { weeklyQueue } from './weekly-links';
 import monthlyQueueJob, { monthlyQueue } from './monthly-links';
+import singleLinkQueueJob, { singleLinkQueue } from './single-link';
 
 logger.info('Starting Job Handler');
 
@@ -36,4 +37,10 @@ weeklyQueue.process('weeklyScrapeQueue', async (job, done) => {
 monthlyQueue.process('monthlyScrapeQueue', async (job, done) => {
     logger.warn('monthlyLinkScraper');
     done(null);
+});
+
+singleLinkQueue.process('single_link_scrape_job', async (job, done) => {
+    logger.warn('Start single link job');
+    const res = await singleLinkQueueJob(job.data);
+    done(null, res);
 });

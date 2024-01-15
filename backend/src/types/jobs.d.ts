@@ -1,4 +1,4 @@
-import { CronStatus, Domains, Timing } from '@prisma/client';
+import { CronStatus, Domains, Timing, links_timing } from '@prisma/client';
 
 export interface LinkList {
     name: string;
@@ -16,4 +16,13 @@ export interface JobData {
     startTime: Date;
     endTime?: Date;
     links: LinkList[]; // Array of links to be processed
+}
+
+export interface SingleLinkJobData {
+    uuid: string;
+    status: CronStatus;
+    startTime: Date;
+    endTime?: Date;
+    hash: string;
+    timing: links_timing;
 }
