@@ -1,10 +1,9 @@
 import express from 'express';
 const router = express.Router();
 import { trackerController } from '@/controllers';
-import auth from '@/middlewares/auth';
 import { trackerValidation } from '@/validations';
 import validate from '@/middlewares/validate';
-router.use(auth());
+//router.use(auth());
 //Receive hashedURL and get history of the link
 router.get(
     '/get-link-history/:id',

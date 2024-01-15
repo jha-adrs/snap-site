@@ -1,13 +1,12 @@
 // Responsible for handling all the logic related to the links
 
 import prisma from '@/client';
-import { LinkList } from '@/types/jobs';
-import { Timing } from '@prisma/client';
+import { links_timing } from '@prisma/client';
 
-const fetchLinks = async (timing: Timing): Promise<LinkList[]> => {
+async function fetchLinks(timing: links_timing) {
     const links = await prisma.links.findMany({
         where: {
-            timing,
+            timing: timing,
             isActive: true,
         },
         select: {
@@ -17,11 +16,11 @@ const fetchLinks = async (timing: Timing): Promise<LinkList[]> => {
             timing: true,
             hasConfigChanged: true,
             domainId: true,
-            domain: true,
+            domains: true,
         },
     });
     return links;
-};
+}
 
 export default {
     fetchLinks,

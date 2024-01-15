@@ -1,185 +1,259 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "mysql"  
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id              Int            @id @default(autoincrement())
-  email           String         @unique
-  name            String?
-  password        String
-  role            Role           @default(USER)
-  isEmailVerified Boolean        @default(false)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  imageUrl        String?
-  isActive        Boolean        @default(true)
-  Token           Token[]
-  Organization    Organization[]
-  Links           UserLinkMap[]
+model account {
+  id                String  @id
+  userId            String
+  providerAccountId String
+  access_token      String? @db.Text
+  expires_at        Int?
+  id_token          String? @db.Text
+  provider          String
+  refresh_token     String? @db.Text
+  scope             String?
+  session_state     String?
+  token_type        String?
+  type              String
+  user              user    @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Account_userId_fkey")
+
+  @@unique([provider, providerAccountId], map: "Account_provider_providerAccountId_key")
+  @@index([userId], map: "Account_userId_fkey")
 }
 
-model Token {
-  id          Int       @id @default(autoincrement())
-  token       String
-  type        TokenType
-  expires     DateTime
-  blacklisted Boolean
-  createdAt   DateTime  @default(now())
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      Int
+model cron {
+  id        Int         @id @default(autoincrement())
+  timing    cron_timing @default(WEEKLY)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime
 }
 
-enum Role {
-  USER
-  ADMIN
+model cronhistory {
+  id            Int                @id @default(autoincrement())
+  links         Json
+  data          Json
+  status        cronhistory_status @default(PENDING)
+  startTime     DateTime?
+  endTime       DateTime?
+  failureReason String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime
 }
 
-enum TokenType {
-  ACCESS
-  REFRESH
-  RESET_PASSWORD
-  VERIFY_EMAIL
+model domains {
+  id                 Int                        @id @default(autoincrement())
+  name               String?
+  domain             String                     @unique(map: "Domains_domain_key")
+  isActive           Boolean                    @default(true)
+  status             domains_status             @default(NOT_CONFIGURED)
+  storeImages        Boolean                    @default(false)
+  priceElement       Json
+  priceElementStatus domains_priceElementStatus @default(NOT_FOUND)
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime
+  domainImage        String?
+  links              links[]
+  userdomainmap      userdomainmap[]
+
+  @@index([domain], map: "Domains_domain_idx")
 }
 
-model Organization {
-  id        Int      @id @default(autoincrement())
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  creatorId Int      @unique
-  creator   User     @relation(fields: [creatorId], references: [id])
+model linkdata {
+  id           Int             @id @default(autoincrement())
+  status       linkdata_status @default(PENDING)
+  images       Json
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime
+  failedReason String?
+  hashedUrl    String
+  metadata     Json
+  objectKey    String          @db.LongText
+
+  @@unique([hashedUrl, createdAt], map: "LinkData_hashedUrl_createdAt_key")
+  @@index([createdAt], map: "LinkData_createdAt_idx")
+  @@index([hashedUrl], map: "LinkData_hashedUrl_idx")
 }
 
-model Domains {
-  id       Int          @id @default(autoincrement())
-  name     String?
-  domain   String       @unique
-  isActive Boolean      @default(false)
-  status   DomainStatus @default(NOT_CONFIGURED)
-
-  storeImages Boolean @default(false)
-
-  priceElement       Json               @default("{}") // Store price element in the website
-  priceElementStatus PriceElementStatus @default(NOT_FOUND) // If price element has been found or not, or is dynamically changing
-  Links              Links[]
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-
-  @@index([domain])
-}
-
-enum DomainStatus {
-  CONFIGURED
-  NOT_CONFIGURED
-  EXCLUDED
-}
-
-enum PriceElementStatus {
-  SINGLE
-  MULTIPLE
-  NOT_FOUND
-}
-
-model Links {
+model links {
   id               Int           @id @default(autoincrement())
   name             String?
   url              String        @db.LongText
-  hashedUrl        String        @unique
-  isActive         Boolean       @default(false)
+  hashedUrl        String        @unique(map: "Links_hashedUrl_key")
+  isActive         Boolean       @default(true)
   trackingImage    Boolean       @default(false)
   imageUrl         String?
-  hasConfigChanged Boolean       @default(false) // If price element changes, then this will be set to true
-  timing           Timing        @default(WEEKLY)
+  hasConfigChanged Boolean       @default(false)
+  timing           links_timing  @default(WEEKLY)
   domainId         Int
-  domain           Domains       @relation(fields: [domainId], references: [id])
-  Users            UserLinkMap[]
   createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  linkData          LinkData[]
-  @@index([domainId])
-  @@index([name])
-  @@index([hashedUrl])
+  updatedAt        DateTime
+  params           String?
+  domains          domains       @relation(fields: [domainId], references: [id], map: "Links_domainId_fkey")
+  userlinkmap      userlinkmap[]
+
+  @@index([domainId], map: "Links_domainId_idx")
+  @@index([hashedUrl], map: "Links_hashedUrl_idx")
+  @@index([name], map: "Links_name_idx")
 }
 
-enum Timing {
+model notifications {
+  id          Int                    @id @default(autoincrement())
+  userId      String
+  message     String
+  readStatus  Boolean                @default(false)
+  priority    notifications_priority @default(LOW)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime
+  description String?
+  user        user                   @relation(fields: [userId], references: [id], map: "Notifications_userId_fkey")
+
+  @@index([userId], map: "Notifications_userId_fkey")
+}
+
+model organization {
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  creatorId String   @unique(map: "Organization_creatorId_key")
+  user      user     @relation(fields: [creatorId], references: [id], map: "Organization_creatorId_fkey")
+}
+
+model session {
+  id           String   @id
+  userId       String
+  expires      DateTime
+  sessionToken String   @unique(map: "Session_sessionToken_key")
+  user         user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Session_userId_fkey")
+
+  @@index([userId], map: "Session_userId_fkey")
+}
+
+model user {
+  id            String          @id
+  email         String          @unique(map: "User_email_key")
+  name          String?
+  password      String?
+  role          user_role       @default(USER)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime
+  image         String?
+  emailVerified DateTime?
+  account       account[]
+  notifications notifications[]
+  organization  organization?
+  session       session[]
+  userdomainmap userdomainmap[]
+  userlinkmap   userlinkmap[]
+}
+
+model userdomainmap {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  domainId  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  domains   domains  @relation(fields: [domainId], references: [id], map: "UserDomainMap_domainId_fkey")
+  user      user     @relation(fields: [userId], references: [id], map: "UserDomainMap_userId_fkey")
+
+  @@unique([userId, domainId], map: "UserDomainMap_userId_domainId_key")
+  @@index([domainId], map: "UserDomainMap_domainId_fkey")
+  @@index([userId, domainId], map: "UserDomainMap_userId_domainId_idx")
+}
+
+model userlinkmap {
+  id           Int                @id @default(autoincrement())
+  assignedName String?
+  tags         String?
+  userId       String
+  linkId       Int
+  timing       userlinkmap_timing @default(WEEKLY)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime
+  links        links              @relation(fields: [linkId], references: [id], map: "UserLinkMap_linkId_fkey")
+  user         user               @relation(fields: [userId], references: [id], map: "UserLinkMap_userId_fkey")
+
+  @@unique([userId, linkId], map: "UserLinkMap_userId_linkId_key")
+  @@index([linkId], map: "UserLinkMap_linkId_fkey")
+  @@index([userId, linkId], map: "UserLinkMap_userId_linkId_idx")
+}
+
+model verificationrequest {
+  id         String   @id
+  identifier String
+  token      String   @unique(map: "VerificationRequest_token_key")
+  expires    DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime
+
+  @@unique([identifier, token], map: "VerificationRequest_identifier_token_key")
+}
+
+model verificationtoken {
+  identifier String
+  token      String   @unique(map: "VerificationToken_token_key")
+  expires    DateTime
+
+  @@unique([identifier, token], map: "VerificationToken_identifier_token_key")
+}
+
+enum cron_timing {
+  HOURLY
   DAILY
   WEEKLY
   MONTHLY
 }
 
-model UserLinkMap {
-  id           Int      @id @default(autoincrement())
-  assignedName String?
-  tags         String?
-  userId       Int
-  user         User     @relation(fields: [userId], references: [id])
-  linkId       Int
-  link         Links    @relation(fields: [linkId], references: [id])
-  timing       Timing   @default(WEEKLY)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@unique([userId, linkId])
-  @@index([userId, linkId])
-}
-
-// TODO: Add organizationId to User 
-
-// Link Data
-
-model LinkData {
-  id           Int            @id @default(autoincrement())
-  status       LinkDataStatus @default(PENDING)
-  objectKey    String         @db.LongText // URL of the page that was scraped and saved
-  images       Json           @default("{}") // Stores image URLs of the page
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  failedReason String?
-  metadata     Json           @default("{}") // Stores metadata of the page
-  hashedUrl    String
-  link         Links          @relation(fields: [hashedUrl], references: [hashedUrl])
-
-  @@unique([hashedUrl, createdAt])
-  @@index([hashedUrl])
-  @@index([createdAt])
-}
-
-enum LinkDataStatus {
+enum linkdata_status {
   SUCCESS
   FAILED
   PENDING
   CRON_FAILED
 }
 
-model Cron {
-  id        Int      @id @default(autoincrement())
-  timing    Timing   @default(WEEKLY)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model CronHistory {
-  id            Int        @id @default(autoincrement())
-  links         Json       @default("{}") // List of all links that were processed
-  data          Json       @default("{}")
-  status        CronStatus @default(PENDING)
-  startTime     DateTime?
-  endTime       DateTime?
-  failureReason String?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-}
-
-enum CronStatus {
+enum cronhistory_status {
   SUCCESS
   PENDING
   FAILED
+}
+
+enum domains_status {
+  CONFIGURED
+  NOT_CONFIGURED
+  EXCLUDED
+}
+
+enum notifications_priority {
+  HIGH
+  LOW
+}
+
+enum user_role {
+  USER
+  ADMIN
+}
+
+enum userlinkmap_timing {
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum domains_priceElementStatus {
+  SINGLE
+  MULTIPLE
+  NOT_FOUND
+}
+
+enum links_timing {
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
 }

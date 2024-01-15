@@ -7,7 +7,6 @@ import {
     PutObjectCommand,
     S3Client,
 } from '@aws-sdk/client-s3';
-import { fileTypeFromBuffer } from 'file-type';
 
 const client = new S3Client({
     region: config.aws.region,
@@ -43,8 +42,8 @@ const uploadFile = async ({
     try {
         logger.info('Uploading HTML File', { domainName, hashedUrl, originalUrl, fileType });
         if (!fileType) {
-            const type = await fileTypeFromBuffer(file);
-            fileType = type ? type.ext : 'bin';
+            const type = 'text/html';
+            fileType = type ? 'html' : 'bin';
         }
         const timestamp = Date.now();
         const key = `${domainName}/${hashedUrl}/${timestamp}.${fileType}`;
