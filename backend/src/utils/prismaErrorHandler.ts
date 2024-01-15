@@ -140,10 +140,10 @@ function getPrismaErrorMessage(err: any, errorCode: any): string | null {
         const code: any = errorCode
             ? errorCode
             : err?.code
-            ? err.code
-            : err?.errorCode
-            ? err.errorCode
-            : 'P5000';
+              ? err.code
+              : err?.errorCode
+                ? err.errorCode
+                : 'P5000';
         const errorMessage = errorMessages[code];
         logger.error(`Prisma error code ${code} error message ${errorMessage}`);
         return errorMessage ? errorMessage : null;

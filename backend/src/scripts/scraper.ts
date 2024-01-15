@@ -117,3 +117,16 @@ export async function takeScreenshot({ url, hostname }: ScreenshotParams) {
         throw new Error('Error in taking screenshot');
     }
 }
+
+export async function pupetterScreenshot() {
+    // const url = 'https://github.com/microsoft/vscode-copilot-release/issues/583';
+    // const browser = await Puppeteer.getBrowser();
+    // Puppeteer.setIsUsingBrowser(true);
+    // const page = await browser.newPage();
+    // await page.goto(url, { waitUntil: 'networkidle2' });
+    // await page.waitForSelector('body');
+    // // Take screenshot
+    // await page.screenshot({ path: 'example.png', fullPage: true });
+    // await page.close();
+    // Puppeteer.setIsUsingBrowser(false);
+}
