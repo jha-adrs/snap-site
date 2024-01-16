@@ -13,11 +13,15 @@ class Redis {
                 port: config.redis.port,
             },
         });
+
+        client.connect();
         client.on('error', (err) => {
             console.error('Redis Error', err);
             throw new Error(err);
         });
-        client.connect();
+        client.on('connect', () => {
+            logger.info('Connected to redis');
+        });
         this.redisClient = client;
     }
     async addKey(key: string, value: any, ttl?: number) {

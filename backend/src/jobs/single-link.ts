@@ -2,6 +2,7 @@
 import prisma from '@/client';
 import logger from '@/config/logger';
 import { SingleLinkJobData } from '@/types/jobs';
+import PuppeteerCluster from '@/utils/puppeteer';
 import { redisBullConfig } from '@/utils/redis-helper';
 import Queue from 'bull';
 
@@ -43,7 +44,16 @@ async function singleLinkQueueJob(job: SingleLinkJobData) {
     });
     logger.info('Found link', link);
     // Complete job here
-
+    async function onCompleteFn(data: any) {
+        logger.info('Completed scraping job', data);
+        await PuppeteerCluster.closeCluster();
+    }
+    PuppeteerCluster.takeScreenShot({
+        url: 'www.wikipedia.org',
+        storageKey: 'storageKey any',
+        onCompleteFn: onCompleteFn,
+    });
+    logger.info('Single Link scrape res');
     return true;
 }
 export default singleLinkQueueJob;
