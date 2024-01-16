@@ -24,7 +24,9 @@ async function fetchLinks(timing: links_timing) {
 }
 
 interface AddLinkDataParams {
-    objectKey: string;
+    htmlObjectKey: string;
+    screenshotKey: string;
+    timing: links_timing;
     metadata: {
         html: any;
         screenshot: any;
@@ -38,18 +40,20 @@ interface AddLinkDataParams {
 async function addLinkData(data: AddLinkDataParams) {
     try {
         logger.info('Adding link data', data);
-        if (!data.objectKey || !data.metadata || !data.images) {
+        if (!data.htmlObjectKey || !data.screenshotKey || !data.metadata || !data.images) {
             throw new Error('Invalid data');
         }
 
         await prisma.linkdata.create({
             data: {
-                objectKey: data.objectKey,
                 metadata: data.metadata,
                 status: 'SUCCESS',
                 images: data.images,
                 updatedAt: new Date(),
                 hashedUrl: data.hashedUrl,
+                htmlObjectKey: data.htmlObjectKey,
+                screenshotKey: data.screenshotKey,
+                timing: data.timing,
             },
         });
     } catch (error) {

@@ -7,25 +7,8 @@ import Bull from 'bull';
 import Queue from 'bull';
 
 export const dailyQueue = new Queue('dailyScrapeQueue', redisBullConfig);
-
-const completedLinks: string[] = [];
-const failedLinks: string[] = [];
-async function onCompleteFn(data: any) {
-    logger.info('Completed daily scraping job for link: ', data);
-    //await PuppeteerCluster.closeCluster();
-    if (data && data.success === 1) {
-        completedLinks.push(data.url);
-    } else if (data && data.success === 0) {
-        failedLinks.push(data.url);
-    } else {
-        //TODO: Handle this
-        logger.error('Error in onCompleteFn', data);
-        // Send mail to admin
-    }
-    logger.info('Failed links', failedLinks);
-    logger.info('Completed links', completedLinks);
-}
-
+const completedLinks = new Set<string>();
+const failedLinks = new Set<string>();
 async function dailyQueueJob(job: Bull.Job, done: Bull.DoneCallback) {
     // Get all data of links and start job
     try {
@@ -55,7 +38,29 @@ async function dailyQueueJob(job: Bull.Job, done: Bull.DoneCallback) {
                 // }
             },
         });
-        logger.info('Found links', linksRes.length);
+        logger.info('Found links', { length: linksRes.length });
+        async function onCompleteFn(data: any) {
+            logger.info('Completed daily scraping job for link: ', data);
+            //await PuppeteerCluster.closeCluster();
+            if (data && data.success === 1) {
+                completedLinks.add(data.url);
+            } else if (data && data.success === 0) {
+                failedLinks.add(data.url);
+            } else {
+                //TODO: Handle this
+                logger.error('Error in onCompleteFn', data);
+                // Send mail to admin
+            }
+            if (completedLinks.size + failedLinks.size === linksRes.length) {
+                logger.warn('All links completed');
+                PuppeteerCluster.emitEvent('jobFinished', 'All links completed');
+
+                done(null, 'Daily Queue Job Done');
+            }
+            logger.info('Failed links', Array.from(failedLinks.values()));
+            logger.info('Completed links', Array.from(completedLinks.values()));
+        }
+
         const links = linksRes.map((link) => {
             return {
                 url: link.url,
@@ -97,7 +102,6 @@ async function dailyQueueJob(job: Bull.Job, done: Bull.DoneCallback) {
             }
             logger.info('Job added to puppetter queue');
         }
-        done(null, 'Daily Queue Job Done');
     } catch (error: any) {
         logger.error('Error in dailyQueueJob', error);
         done(error);

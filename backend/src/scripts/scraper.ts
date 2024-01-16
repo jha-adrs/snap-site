@@ -153,7 +153,7 @@ interface FullScrapeClusterType {
     data: {
         url: string;
         priceElement?: string;
-        timing?: links_timing;
+        timing: links_timing;
         onCompleteFn?: (arg: any) => any;
         cronHistoryId?: number;
     };
@@ -199,7 +199,9 @@ export async function fullScrapeCluster({ page, data }: FullScrapeClusterType) {
         // Extract price from the page if priceElement is provided later
         // Add link data
         linksService.addLinkData({
-            objectKey: htmlUploadRes.key,
+            htmlObjectKey: htmlUploadRes.key,
+            screenshotKey: screenshotUploadRes.key,
+            timing: data.timing,
             metadata: {
                 html: htmlUploadRes.metadata ? htmlUploadRes.metadata : {},
                 screenshot: screenshotUploadRes.metadata ? screenshotUploadRes.metadata : {},

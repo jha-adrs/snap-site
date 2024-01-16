@@ -42,7 +42,7 @@ model cronhistory {
   endTime       DateTime?
   failureReason String?
   createdAt     DateTime           @default(now())
-  updatedAt     DateTime           
+  updatedAt     DateTime
 }
 
 model domains {
@@ -64,15 +64,17 @@ model domains {
 }
 
 model linkdata {
-  id           Int             @id @default(autoincrement())
-  status       linkdata_status @default(PENDING)
-  images       Json
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime
-  failedReason String?
-  hashedUrl    String
-  metadata     Json
-  objectKey    String          @db.LongText
+  id            Int             @id @default(autoincrement())
+  status        linkdata_status @default(PENDING)
+  images        Json
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime
+  failedReason  String?
+  hashedUrl     String
+  metadata      Json
+  htmlObjectKey String          @db.LongText
+  screenshotKey String          @db.LongText
+  timing        linkdata_timing
 
   @@unique([hashedUrl, createdAt], map: "LinkData_hashedUrl_createdAt_key")
   @@index([createdAt], map: "LinkData_createdAt_idx")
@@ -252,6 +254,13 @@ enum domains_priceElementStatus {
 }
 
 enum links_timing {
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum linkdata_timing {
   HOURLY
   DAILY
   WEEKLY
