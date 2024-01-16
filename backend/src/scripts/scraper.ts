@@ -124,16 +124,15 @@ interface screenshotFn {
     page: Page;
     data: {
         url: string;
-        storageKey: string;
         onCompleteFn?: (arg: any) => any;
     };
 }
 export async function takeScreenshotCluster({ page, data }: screenshotFn) {
-    logger.info('Starting screenshot for data', { data, key: data.storageKey, url: data.url });
+    logger.info('Starting screenshot for data', { data, url: data.url });
     //await page.goto(data.url);
     const valid = isValidUrl(data.url);
     if (!valid) {
-        throw new Error(`Invalid URL found: url ${data.url}, storage key ${data.storageKey}`);
+        throw new Error(`Invalid URL found: url ${data.url}`);
     }
     await page.goto(data.url);
     const path = data.url.replace(/[^a-zA-Z]/g, '_') + '.png';
@@ -153,7 +152,6 @@ interface FullScrapeClusterType {
     page: Page;
     data: {
         url: string;
-        storageKey: string;
         priceElement?: string;
         timing?: links_timing;
         onCompleteFn?: (arg: any) => any;
@@ -163,11 +161,11 @@ interface FullScrapeClusterType {
 
 export async function fullScrapeCluster({ page, data }: FullScrapeClusterType) {
     try {
-        logger.info('Starting full scrape for data', { data, key: data.storageKey, url: data.url });
+        logger.info('Starting full scrape for data', { data, url: data.url });
         // We get screenshot and html
         const valid = isValidUrl(data.url);
         if (!valid) {
-            throw new Error(`Invalid URL found: url ${data.url}, storage key ${data.storageKey}`);
+            throw new Error(`Invalid URL found: url ${data.url}`);
         }
         const urlObj = new URL(data.url);
         await page.goto(data.url, { waitUntil: 'networkidle2' });
@@ -214,6 +212,7 @@ export async function fullScrapeCluster({ page, data }: FullScrapeClusterType) {
             logger.info('Callback function');
             data.onCompleteFn({
                 success: 1,
+                url: data.url,
                 htmlUploadRes,
                 screenshotUploadRes,
                 cronHistoryId: data.cronHistoryId,
@@ -227,7 +226,8 @@ export async function fullScrapeCluster({ page, data }: FullScrapeClusterType) {
             data.onCompleteFn({
                 success: 0,
                 error: 'Error in full scrape cluster',
-                cronHistoryId: data.cronHistoryId,
+                url: data?.url,
+                cronHistoryId: data?.cronHistoryId,
             });
         }
         throw new Error('Error in full scrape cluster');

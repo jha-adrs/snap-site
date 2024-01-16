@@ -60,7 +60,6 @@ export const Puppeteer = {
 
 export interface AddToPuppeteerQueueParams {
     url: string;
-    storageKey: string;
     timing?: links_timing;
     cronHistoryId?: number;
     onCompleteFn?: (arg: any) => any;
@@ -73,8 +72,8 @@ const PuppeteerCluster = {
         logger.info('Lauching pupetter cluster');
         pupeteerCluster = await Cluster.launch({
             concurrency: Cluster.CONCURRENCY_CONTEXT, // No shared context
-            maxConcurrency: 1,
-            monitor: true, // TODO: Change this later
+            maxConcurrency: 4,
+            monitor: false, // TODO: Change this later
             puppeteerOptions: {
                 headless: 'new',
                 defaultViewport: { width: 1400, height: 998, isLandscape: true },
@@ -85,13 +84,13 @@ const PuppeteerCluster = {
         });
         return pupeteerCluster;
     },
-    takeScreenShot: async function ({ url, storageKey, onCompleteFn }: AddToPuppeteerQueueParams) {
+    takeScreenShot: async function ({ url, onCompleteFn }: AddToPuppeteerQueueParams) {
         try {
-            logger.debug('Starting takeScreenshot', { url, storageKey });
+            logger.debug('Starting takeScreenshot', { url });
             if (!pupeteerCluster) {
                 await PuppeteerCluster.launchCluster();
             }
-            pupeteerCluster.queue({ url, storageKey, onCompleteFn }, takeScreenshotCluster);
+            pupeteerCluster.queue({ url, onCompleteFn }, takeScreenshotCluster);
         } catch (error) {
             logger.error('Error in screenshot function', error);
             throw error;
@@ -99,7 +98,6 @@ const PuppeteerCluster = {
     },
     fullScrape: async function ({
         url,
-        storageKey,
         timing,
         onCompleteFn,
         cronHistoryId,
@@ -109,13 +107,12 @@ const PuppeteerCluster = {
             if (!pupeteerCluster) {
                 await PuppeteerCluster.launchCluster();
             }
-            pupeteerCluster.queue(
-                { url, storageKey, timing, onCompleteFn, cronHistoryId },
-                fullScrapeCluster
-            );
+            pupeteerCluster.queue({ url, timing, onCompleteFn, cronHistoryId }, fullScrapeCluster);
+            return true;
         } catch (error) {
             logger.info('Error in full scrape', error);
             await PuppeteerCluster.closeCluster();
+            return false;
         }
     },
     closeCluster: async function () {

@@ -101,7 +101,6 @@ async function singleLinkQueueJob(job: SingleLinkJobData) {
     }
     PuppeteerCluster.fullScrape({
         url: link.url,
-        storageKey: link.hashedUrl,
         timing: link.timing,
         cronHistoryId: cronHistoryRes.id,
         onCompleteFn,
