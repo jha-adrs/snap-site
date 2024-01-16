@@ -2,13 +2,14 @@
 import prisma from '@/client';
 import logger from '@/config/logger';
 import { redisBullConfig } from '@/utils/redis-helper';
+import Bull from 'bull';
 import Queue from 'bull';
 
 export const monthlyQueue = new Queue('monthlyScrapeQueue', redisBullConfig);
 
-async function monthlyQueueJob() {
+async function monthlyQueueJob(job: Bull.Job, done: Bull.DoneCallback) {
     // Get all data of links and start job
-    logger.info('Starting monthlyQueue job');
+    logger.info('Starting monthlyQueue job', job.id);
     const linksRes = await prisma.links.findMany({
         where: {
             timing: 'MONTHLY',
@@ -51,6 +52,6 @@ async function monthlyQueueJob() {
         });
         logger.info('Job added for link', link);
     }
-    return true;
+    done(null, 'Monthly Queue Job Done');
 }
 export default monthlyQueueJob;

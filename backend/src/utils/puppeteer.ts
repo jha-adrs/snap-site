@@ -1,7 +1,8 @@
-import puppeteer, { Browser, Page } from 'puppeteer';
+import puppeteer, { Browser } from 'puppeteer';
 import logger from '@/config/logger';
 import { Cluster } from 'puppeteer-cluster';
-import { isValidUrl } from './urlUtils';
+import { fullScrapeCluster, takeScreenshotCluster } from '@/scripts/scraper';
+import { links_timing } from '@prisma/client';
 let browser: Browser | null = null;
 
 let start_time: number | null = null;
@@ -57,42 +58,16 @@ export const Puppeteer = {
     },
 };
 
-interface takeScreenShotParams {
+export interface AddToPuppeteerQueueParams {
     url: string;
     storageKey: string;
+    timing?: links_timing;
+    cronHistoryId?: number;
     onCompleteFn?: (arg: any) => any;
-}
-interface screenshotFn {
-    page: Page;
-    data: {
-        url: string;
-        storageKey: string;
-        onCompleteFn?: (arg: any) => any;
-    };
 }
 
 let pupeteerCluster: Cluster;
 
-const screenshot = async ({ page, data }: screenshotFn) => {
-    logger.info('Starting screenshot for data', { data, key: data.storageKey, url: data.url });
-    //await page.goto(data.url);
-    const valid = isValidUrl(data.url);
-    if (!valid) {
-        throw new Error(`Invalid URL found: url ${data.url}, storage key ${data.storageKey}`);
-    }
-    await page.goto(data.url);
-    const path = data.url.replace(/[^a-zA-Z]/g, '_') + '.png';
-    const screenshot = await page.screenshot({ path });
-    if (data.onCompleteFn) {
-        logger.info('Callback function');
-        data.onCompleteFn({
-            success: 1,
-            result: screenshot.byteLength,
-        });
-    } else {
-        logger.info('No callback');
-    }
-};
 const PuppeteerCluster = {
     launchCluster: async function () {
         logger.info('Lauching pupetter cluster');
@@ -108,17 +83,39 @@ const PuppeteerCluster = {
             retryLimit: 1,
             sameDomainDelay: 0,
         });
+        return pupeteerCluster;
     },
-    takeScreenShot: async function ({ url, storageKey, onCompleteFn }: takeScreenShotParams) {
+    takeScreenShot: async function ({ url, storageKey, onCompleteFn }: AddToPuppeteerQueueParams) {
         try {
             logger.debug('Starting takeScreenshot', { url, storageKey });
             if (!pupeteerCluster) {
                 await PuppeteerCluster.launchCluster();
             }
-            pupeteerCluster.queue({ url, storageKey, onCompleteFn }, screenshot);
+            pupeteerCluster.queue({ url, storageKey, onCompleteFn }, takeScreenshotCluster);
         } catch (error) {
             logger.error('Error in screenshot function', error);
             throw error;
+        }
+    },
+    fullScrape: async function ({
+        url,
+        storageKey,
+        timing,
+        onCompleteFn,
+        cronHistoryId,
+    }: AddToPuppeteerQueueParams) {
+        try {
+            logger.info('Starting full scrape');
+            if (!pupeteerCluster) {
+                await PuppeteerCluster.launchCluster();
+            }
+            pupeteerCluster.queue(
+                { url, storageKey, timing, onCompleteFn, cronHistoryId },
+                fullScrapeCluster
+            );
+        } catch (error) {
+            logger.info('Error in full scrape', error);
+            await PuppeteerCluster.closeCluster();
         }
     },
     closeCluster: async function () {

@@ -7,6 +7,9 @@ import {
     PutObjectCommand,
     S3Client,
 } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+
+import { links_timing } from '@prisma/client';
 
 const client = new S3Client({
     region: config.aws.region,
@@ -30,6 +33,9 @@ export interface UploadFileParams {
     originalUrl: string;
     hashedUrl: string;
     fileType?: string;
+    timestamp?: number;
+    timing?: links_timing;
+    timezone?: string;
 }
 
 const uploadFile = async ({
@@ -38,6 +44,9 @@ const uploadFile = async ({
     hashedUrl,
     originalUrl,
     fileType,
+    timestamp,
+    timezone,
+    timing,
 }: UploadFileParams) => {
     try {
         logger.info('Uploading HTML File', { domainName, hashedUrl, originalUrl, fileType });
@@ -45,13 +54,13 @@ const uploadFile = async ({
             const type = 'text/html';
             fileType = type ? 'html' : 'bin';
         }
-        const timestamp = Date.now();
-        const key = `${domainName}/${hashedUrl}/${timestamp}.${fileType}`;
+        if (!timestamp) timestamp = Date.now();
+        const key = `${timing}/${domainName}/${hashedUrl}/${timestamp}.${fileType}`;
         const metadata = {
             originalUrl,
             hashedUrl,
             timestamp: timestamp.toString(),
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            timezone: timezone ? timezone : Intl.DateTimeFormat().resolvedOptions().timeZone,
         };
         const command = new PutObjectCommand({
             Key: key,
@@ -114,9 +123,21 @@ const getS3Object = async ({ key, bucketName, contentEncoding }: GetS3ObjectPara
     }
 };
 
+async function getPresignedURL(key: string) {
+    try {
+        logger.info('Getting presigned URL', { key });
+        const command = new GetObjectCommand({ Bucket: config.aws.s3BucketName, Key: key });
+        return getSignedUrl(client, command, { expiresIn: 86400 });
+    } catch (error) {
+        logger.error('Error in getting presigned URL', error);
+        return null;
+    }
+}
+
 export default {
     listBuckets,
     uploadFile,
     getS3Domains,
     getS3Object,
+    getPresignedURL,
 };

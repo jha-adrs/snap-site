@@ -7,5 +7,4 @@ import { trackerValidation } from '@/validations';
 //Receive hashedURL and get history of the link
 router.get('/start/single', trackerController.singleLinkCron, trackerController.singleLinkCron);
 router.get('/start', validate(trackerValidation.startCron), trackerController.startCron);
-
 export default router;

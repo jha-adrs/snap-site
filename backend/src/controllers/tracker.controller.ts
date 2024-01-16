@@ -3,6 +3,7 @@ import { dailyQueue } from '@/jobs/daily-links';
 import { monthlyQueue } from '@/jobs/monthly-links';
 import { singleLinkQueue } from '@/jobs/single-link';
 import { weeklyQueue } from '@/jobs/weekly-links';
+import { fileService } from '@/services';
 import catchAsync from '@/utils/catchAsync';
 import { trackerValidation } from '@/validations';
 const startCron = catchAsync(async (req, res) => {
@@ -61,7 +62,23 @@ const singleLinkCron = catchAsync(async (req, res) => {
     }
 });
 
+const getPresignedURL = catchAsync(async (req, res) => {
+    try {
+        logger.info('Getting presigned url');
+        const key = req.body.key;
+        if (!key) {
+            return res.status(400).json({ success: 0, message: 'Invalid key' });
+        }
+        const url = await fileService.getPresignedURL(key);
+        return res.status(200).json({ success: 1, message: 'OK', data: url });
+    } catch (error) {
+        logger.error('Error in getPresignedURL', error);
+        return res.status(500).json({ success: 0, message: 'Something went wrong' });
+    }
+});
+
 export default {
     startCron,
     singleLinkCron,
+    getPresignedURL,
 };

@@ -8,35 +8,17 @@ logger.info('Starting Job Handler');
 
 dailyQueue.process('daily_scrape_job', async (job, done) => {
     logger.info('daily_scrape_job');
-    const res = await dailyQueueJob();
-    done(null, res);
+    dailyQueueJob(job, done);
 });
 
 weeklyQueue.process('weekly_scrape_job', async (job, done) => {
     logger.info('weekly_scrape_job');
-    const res = await weeklyQueueJob();
-    done(null, res);
+    weeklyQueueJob(job, done);
 });
 
 monthlyQueue.process('monthly_scrape_job', async (job, done) => {
     logger.info('monthly_scrape_job');
-    const res = await monthlyQueueJob();
-    done(null, res);
-});
-
-dailyQueue.process('dailyLinkScraper', async (job, done) => {
-    logger.warn('dailyLinkScraper');
-    done(null);
-});
-
-weeklyQueue.process('weeklyScrapeQueue', async (job, done) => {
-    logger.warn('weeklyLinkScraper');
-    done(null);
-});
-
-monthlyQueue.process('monthlyScrapeQueue', async (job, done) => {
-    logger.warn('monthlyLinkScraper');
-    done(null);
+    monthlyQueueJob(job, done);
 });
 
 singleLinkQueue.process('single_link_scrape_job', async (job, done) => {
@@ -44,3 +26,18 @@ singleLinkQueue.process('single_link_scrape_job', async (job, done) => {
     const res = await singleLinkQueueJob(job.data);
     done(null, res);
 });
+
+// dailyQueue.process('dailyLinkScraper', async (job, done) => {
+//     logger.warn('dailyLinkScraper');
+//     done(null);
+// });
+
+// weeklyQueue.process('weeklyScrapeQueue', async (job, done) => {
+//     logger.warn('weeklyLinkScraper');
+//     done(null);
+// });
+
+// monthlyQueue.process('monthlyScrapeQueue', async (job, done) => {
+//     logger.warn('monthlyLinkScraper');
+//     done(null);
+// });

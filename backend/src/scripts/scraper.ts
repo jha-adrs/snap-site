@@ -5,10 +5,12 @@ import { load } from 'cheerio';
 import axios, { AxiosError } from 'axios';
 import { isValidUrl } from '@/utils/urlUtils';
 import getHash from '@/utils/link-shortener';
-import { fileService } from '@/services';
+import { fileService, linksService } from '@/services';
 import { UploadFileParams } from '@/services/file.service';
 import config from '@/config/config';
 import puppeteer from 'puppeteer-core';
+import { Page } from 'puppeteer';
+import { links_timing } from '@prisma/client';
 /**
  * Type I-Full scrape, save everything on the page
  * Type II-Scrape only the required data, can be class,id or tag
@@ -118,15 +120,116 @@ export async function takeScreenshot({ url, hostname }: ScreenshotParams) {
     }
 }
 
-export async function pupetterScreenshot() {
-    // const url = 'https://github.com/microsoft/vscode-copilot-release/issues/583';
-    // const browser = await Puppeteer.getBrowser();
-    // Puppeteer.setIsUsingBrowser(true);
-    // const page = await browser.newPage();
-    // await page.goto(url, { waitUntil: 'networkidle2' });
-    // await page.waitForSelector('body');
-    // // Take screenshot
-    // await page.screenshot({ path: 'example.png', fullPage: true });
-    // await page.close();
-    // Puppeteer.setIsUsingBrowser(false);
+interface screenshotFn {
+    page: Page;
+    data: {
+        url: string;
+        storageKey: string;
+        onCompleteFn?: (arg: any) => any;
+    };
+}
+export async function takeScreenshotCluster({ page, data }: screenshotFn) {
+    logger.info('Starting screenshot for data', { data, key: data.storageKey, url: data.url });
+    //await page.goto(data.url);
+    const valid = isValidUrl(data.url);
+    if (!valid) {
+        throw new Error(`Invalid URL found: url ${data.url}, storage key ${data.storageKey}`);
+    }
+    await page.goto(data.url);
+    const path = data.url.replace(/[^a-zA-Z]/g, '_') + '.png';
+    const screenshot = await page.screenshot({ path });
+    if (data.onCompleteFn) {
+        logger.info('Callback function');
+        data.onCompleteFn({
+            success: 1,
+            result: screenshot.byteLength,
+        });
+    } else {
+        logger.info('No callback');
+    }
+}
+
+interface FullScrapeClusterType {
+    page: Page;
+    data: {
+        url: string;
+        storageKey: string;
+        priceElement?: string;
+        timing?: links_timing;
+        onCompleteFn?: (arg: any) => any;
+        cronHistoryId?: number;
+    };
+}
+
+export async function fullScrapeCluster({ page, data }: FullScrapeClusterType) {
+    try {
+        logger.info('Starting full scrape for data', { data, key: data.storageKey, url: data.url });
+        // We get screenshot and html
+        const valid = isValidUrl(data.url);
+        if (!valid) {
+            throw new Error(`Invalid URL found: url ${data.url}, storage key ${data.storageKey}`);
+        }
+        const urlObj = new URL(data.url);
+        await page.goto(data.url, { waitUntil: 'networkidle2' });
+        // Wait for the page to load
+        const html = await page.content();
+        const screenshot = await page.screenshot({ fullPage: true });
+        // Save html and screenshot to S3
+        const { hashedLink, originalLink } = await getHash(data.url, config.scraper.hashLength);
+        const timestamp = Date.now();
+        const htmlUploadRes = await fileService.uploadFile({
+            fileName: `${hashedLink}.html`,
+            file: Buffer.from(html),
+            domainName: urlObj.hostname,
+            originalUrl: originalLink,
+            hashedUrl: hashedLink,
+            fileType: 'html',
+            timing: data.timing,
+            timestamp,
+        });
+        const screenshotUploadRes = await fileService.uploadFile({
+            fileName: `${hashedLink}.png`,
+            file: screenshot,
+            domainName: urlObj.hostname,
+            originalUrl: originalLink,
+            hashedUrl: hashedLink,
+            fileType: 'png',
+            timing: data.timing,
+            timestamp,
+        });
+        logger.info('File upload response', { htmlUploadRes, screenshotUploadRes });
+        // Extract price from the page if priceElement is provided later
+        // Add link data
+        linksService.addLinkData({
+            objectKey: htmlUploadRes.key,
+            metadata: {
+                html: htmlUploadRes.metadata ? htmlUploadRes.metadata : {},
+                screenshot: screenshotUploadRes.metadata ? screenshotUploadRes.metadata : {},
+            },
+            images: { fullPage: screenshotUploadRes.key },
+            hashedUrl: hashedLink,
+        });
+
+        if (data.onCompleteFn) {
+            logger.info('Callback function');
+            data.onCompleteFn({
+                success: 1,
+                htmlUploadRes,
+                screenshotUploadRes,
+                cronHistoryId: data.cronHistoryId,
+            });
+        } else {
+            logger.info('No callback');
+        }
+    } catch (error) {
+        logger.error('Error in full scrape cluster', error);
+        if (data?.onCompleteFn) {
+            data.onCompleteFn({
+                success: 0,
+                error: 'Error in full scrape cluster',
+                cronHistoryId: data.cronHistoryId,
+            });
+        }
+        throw new Error('Error in full scrape cluster');
+    }
 }
