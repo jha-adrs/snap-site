@@ -1,5 +1,5 @@
 // Scrapes a given link and extracts data
-
+import userAgents from 'user-agents';
 import logger from '@/config/logger';
 import { load } from 'cheerio';
 import axios, { AxiosError } from 'axios';
@@ -106,7 +106,7 @@ export async function takeScreenshot({ url, hostname }: ScreenshotParams) {
                 hashedUrl: hashedLink,
                 originalUrl: originalLink,
                 fileType: 'png',
-                fileName: `${hashedLink}-${Date.now()}.png`,
+                fileName: `${hashedLink}-${Date.now()}`,
             };
             const fileResponse = await fileService.uploadFile(fileUploadParams);
             results.push(fileResponse);
@@ -156,6 +156,8 @@ interface FullScrapeClusterType {
         timing: links_timing;
         onCompleteFn?: (arg: any) => any;
         cronHistoryId?: number;
+        includeParams: boolean;
+        params?: string;
     };
 }
 
@@ -168,15 +170,22 @@ export async function fullScrapeCluster({ page, data }: FullScrapeClusterType) {
             throw new Error(`Invalid URL found: url ${data.url}`);
         }
         const urlObj = new URL(data.url);
-        await page.goto(data.url, { waitUntil: 'networkidle2' });
+        // If includeParams is false, remove params from url
+        const finalScrapingUrl = data.includeParams ? data.url : urlObj.origin + urlObj.pathname;
+        const userAgent = new userAgents({ deviceCategory: 'desktop' });
+        await page.setUserAgent(userAgent.toString());
+        await page.goto(finalScrapingUrl, { waitUntil: 'networkidle2', timeout: 120000 });
         // Wait for the page to load
         const html = await page.content();
         const screenshot = await page.screenshot({ fullPage: true });
         // Save html and screenshot to S3
-        const { hashedLink, originalLink } = await getHash(data.url, config.scraper.hashLength);
+        const { hashedLink, originalLink } = await getHash(
+            finalScrapingUrl,
+            config.scraper.hashLength
+        );
         const timestamp = Date.now();
         const htmlUploadRes = await fileService.uploadFile({
-            fileName: `${hashedLink}.html`,
+            fileName: `${hashedLink}`,
             file: Buffer.from(html),
             domainName: urlObj.hostname,
             originalUrl: originalLink,
@@ -186,7 +195,7 @@ export async function fullScrapeCluster({ page, data }: FullScrapeClusterType) {
             timestamp,
         });
         const screenshotUploadRes = await fileService.uploadFile({
-            fileName: `${hashedLink}.png`,
+            fileName: `${hashedLink}`,
             file: screenshot,
             domainName: urlObj.hostname,
             originalUrl: originalLink,
@@ -198,7 +207,7 @@ export async function fullScrapeCluster({ page, data }: FullScrapeClusterType) {
         logger.info('File upload response', { htmlUploadRes, screenshotUploadRes });
         // Extract price from the page if priceElement is provided later
         // Add link data
-        linksService.addLinkData({
+        await linksService.addLinkData({
             htmlObjectKey: htmlUploadRes.key,
             screenshotKey: screenshotUploadRes.key,
             timing: data.timing,
@@ -209,12 +218,20 @@ export async function fullScrapeCluster({ page, data }: FullScrapeClusterType) {
             images: { fullPage: screenshotUploadRes.key },
             hashedUrl: hashedLink,
         });
-
+        // Close page
+        //await page.close();
+        await page.goto('about:blank');
+        //Clear cache and cookies
+        // await page.evaluate(() => {
+        //     localStorage.clear();
+        //     sessionStorage.clear();
+        // });
         if (data.onCompleteFn) {
             logger.info('Callback function');
             data.onCompleteFn({
                 success: 1,
-                url: data.url,
+                url: finalScrapingUrl,
+                includeParams: data.includeParams,
                 htmlUploadRes,
                 screenshotUploadRes,
                 cronHistoryId: data.cronHistoryId,
@@ -229,9 +246,11 @@ export async function fullScrapeCluster({ page, data }: FullScrapeClusterType) {
                 success: 0,
                 error: 'Error in full scrape cluster',
                 url: data?.url,
+                includeParams: data?.includeParams,
+                params: data?.params,
                 cronHistoryId: data?.cronHistoryId,
             });
         }
-        throw new Error('Error in full scrape cluster');
+        throw error;
     }
 }

@@ -20,12 +20,19 @@ class Redis {
             throw new Error(err);
         });
         client.on('connect', () => {
+            client.set('foo', 'bar');
             logger.info('Connected to redis');
         });
         this.redisClient = client;
     }
     async addKey(key: string, value: any, ttl?: number) {
         logger.info('Adding key value', { key, value });
+        if (!this.redisClient || !this.redisClient.isOpen) {
+            logger.info('Redis client is closed');
+            await this.redisClient.connect();
+        } else {
+            logger.info('Redis client is open');
+        }
         const added = await this.redisClient.set(key, value);
         if (ttl) {
             await this.redisClient.expire(key, ttl);
@@ -46,5 +53,6 @@ export const redisBullConfig = {
     redis: {
         host: config.redis.host,
         port: config.redis.port,
+        password: config.redis.password,
     },
 };

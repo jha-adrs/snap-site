@@ -47,15 +47,16 @@ const uploadFile = async ({
     timestamp,
     timezone,
     timing,
+    fileName,
 }: UploadFileParams) => {
     try {
-        logger.info('Uploading HTML File', { domainName, hashedUrl, originalUrl, fileType });
+        logger.info('Uploading File', { domainName, hashedUrl, originalUrl, fileType });
         if (!fileType) {
-            const type = 'text/html';
+            const type = 'text/html'; // TODO: Review this
             fileType = type ? 'html' : 'bin';
         }
         if (!timestamp) timestamp = Date.now();
-        const key = `${timing}/${domainName}/${hashedUrl}/${timestamp}.${fileType}`;
+        const key = `${timing}/${domainName}/${hashedUrl}/${timestamp}/${fileName}.${fileType}`;
         const metadata = {
             originalUrl,
             hashedUrl,
@@ -79,16 +80,17 @@ const uploadFile = async ({
     }
 };
 
-interface GetS3DomainsParams {
-    domainName: string;
+interface ListS3ObjectsParams {
+    prefix: string;
+    bucketName?: string;
 }
 // Get all the domains/folders in the S3 bucket
-const getS3Domains = async ({ domainName }: GetS3DomainsParams) => {
+const listS3Objects = async ({ prefix, bucketName }: ListS3ObjectsParams) => {
     try {
-        logger.info('Getting S3 domains', { domainName });
+        logger.info('Getting S3 domains', { prefix, bucketName });
         const command = new ListObjectsCommand({
             Bucket: config.aws.s3BucketName,
-            Prefix: domainName,
+            Prefix: prefix,
         });
         const response = await client.send(command);
         logger.info('S3 domains', { response });
@@ -137,7 +139,7 @@ async function getPresignedURL(key: string) {
 export default {
     listBuckets,
     uploadFile,
-    getS3Domains,
+    listS3Objects,
     getS3Object,
     getPresignedURL,
 };

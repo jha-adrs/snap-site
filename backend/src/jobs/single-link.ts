@@ -4,33 +4,34 @@ import logger from '@/config/logger';
 import { SingleLinkJobData } from '@/types/jobs';
 import PuppeteerCluster from '@/utils/puppeteer';
 import { redisBullConfig } from '@/utils/redis-helper';
+import Bull from 'bull';
 import Queue from 'bull';
 
 export const singleLinkQueue = new Queue('singleLinkScrapeQueue', redisBullConfig);
-// Complete job here
-async function onCompleteFn(data: any) {
-    logger.info('Completed scraping job', data);
-    await PuppeteerCluster.closeCluster();
-    await prisma.cronhistory.update({
-        where: {
-            id: data.cronHistoryId,
-        },
-        data: {
-            data: {
-                htmlRes: data.htmlUploadRes || {},
-                imageRes: data.imageUploadRes || {},
-            },
-            status: 'SUCCESS',
-            updatedAt: new Date(),
-            endTime: new Date(),
-        },
-    });
-}
 
-async function singleLinkQueueJob(job: SingleLinkJobData) {
+async function singleLinkQueueJob(job: SingleLinkJobData, done: Bull.DoneCallback) {
     // Get all data of links and start job
     logger.info('Starting singleLinkQueue job', job.hash);
-
+    // Complete job here
+    async function onCompleteFn(data: any) {
+        logger.info('Completed scraping job', data);
+        await PuppeteerCluster.closeCluster();
+        await prisma.cronhistory.update({
+            where: {
+                id: data.cronHistoryId,
+            },
+            data: {
+                data: {
+                    htmlRes: data.htmlUploadRes || {},
+                    imageRes: data.imageUploadRes || {},
+                },
+                status: 'SUCCESS',
+                updatedAt: new Date(),
+                endTime: new Date(),
+            },
+        });
+        done(null, data);
+    }
     const link = await prisma.links.findUnique({
         where: {
             hashedUrl: job.hash,
@@ -49,6 +50,7 @@ async function singleLinkQueueJob(job: SingleLinkJobData) {
                     id: true,
                     domain: true,
                     isActive: true,
+                    includeParams: true, // If true, include params in the url
                 },
             },
             // userlinkmap: {
@@ -103,7 +105,9 @@ async function singleLinkQueueJob(job: SingleLinkJobData) {
         url: link.url,
         timing: link.timing,
         cronHistoryId: cronHistoryRes.id,
+        includeParams: link.domains.includeParams,
         onCompleteFn,
+        params: link.params || '',
     });
     logger.info('Single Link scrape res');
     return true;

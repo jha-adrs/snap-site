@@ -5,10 +5,12 @@ import PuppeteerCluster from '@/utils/puppeteer';
 import { redisBullConfig } from '@/utils/redis-helper';
 import Bull from 'bull';
 import Queue from 'bull';
+import { singleLinkQueue } from './single-link';
+import getHash from '@/utils/link-shortener';
+import config from '@/config/config';
 
 export const dailyQueue = new Queue('dailyScrapeQueue', redisBullConfig);
-const completedLinks = new Set<string>();
-const failedLinks = new Set<string>();
+const linkStatus: { [key: string]: boolean } = {};
 async function dailyQueueJob(job: Bull.Job, done: Bull.DoneCallback) {
     // Get all data of links and start job
     try {
@@ -27,6 +29,12 @@ async function dailyQueueJob(job: Bull.Job, done: Bull.DoneCallback) {
                 timing: true,
                 createdAt: true,
                 params: true,
+                domains: {
+                    select: {
+                        domain: true,
+                        includeParams: true, // If true, include params in the url
+                    },
+                },
                 // userlinkmap: {
                 //     select: {
                 //         id: true,
@@ -43,16 +51,31 @@ async function dailyQueueJob(job: Bull.Job, done: Bull.DoneCallback) {
         async function onCompleteFn(data: any) {
             logger.info('Completed daily scraping job for link: ', data);
             //await PuppeteerCluster.closeCluster();
+            const urlObj = new URL(data.url);
+            const finalURL = data?.includeParams ? data?.url : urlObj.origin + urlObj.pathname;
             if (data && data.success === 1) {
-                completedLinks.add(data.url);
+                linkStatus[finalURL] = true;
             } else if (data && data.success === 0) {
-                failedLinks.add(data.url);
+                linkStatus[finalURL] = false;
             } else {
                 //TODO: Handle this
                 logger.error('Error in onCompleteFn', data);
                 // Send mail to admin
             }
-            if (completedLinks.size + failedLinks.size === linksRes.length) {
+            const suceessLinksCount = Object.values(linkStatus).filter(
+                (val) => val === true
+            ).length;
+            const failedLinksCount = Object.values(linkStatus).filter(
+                (val) => val === false
+            ).length;
+            const failedLinks = Object.keys(linkStatus).filter((key) => linkStatus[key] === false);
+            logger.info('Link status', {
+                suceessLinksCount,
+                failedLinksCount,
+                totalLinks: linksRes.length,
+                failedLinks: failedLinks,
+            });
+            if (suceessLinksCount === linksRes.length) {
                 logger.warn('All links completed');
                 PuppeteerCluster.emitEvent('jobFinished', 'All links completed');
                 if (cronhistoryId !== -1) {
@@ -67,10 +90,44 @@ async function dailyQueueJob(job: Bull.Job, done: Bull.DoneCallback) {
                         },
                     });
                 }
-                return done(null, 'Daily Queue Job Done');
+                return done(null, { success: 1, message: 'All links completed' });
+            } else if (failedLinksCount === linksRes.length) {
+                logger.error('All links failed');
+                PuppeteerCluster.emitEvent('jobFinished', 'All links failed');
+                if (cronhistoryId !== -1) {
+                    await prisma.cronhistory.update({
+                        where: {
+                            id: cronhistoryId,
+                        },
+                        data: {
+                            status: 'FAILED',
+                            endTime: new Date(),
+                            updatedAt: new Date(),
+                        },
+                    });
+                }
+                return done(new Error('All links failed'));
+            } else if (suceessLinksCount + failedLinksCount === linksRes.length) {
+                logger.warn('Some links failed');
+                PuppeteerCluster.emitEvent('jobFinished', 'Some links failed');
+                if (cronhistoryId !== -1) {
+                    await prisma.cronhistory.update({
+                        where: {
+                            id: cronhistoryId,
+                        },
+                        data: {
+                            status: 'FAILED',
+                            endTime: new Date(),
+                            updatedAt: new Date(),
+                        },
+                    });
+                }
+                // Queue the failed links again
+                reQueueFailedLinks(failedLinks);
+                return done(null, { success: 0, message: 'Some links failed' });
+            } else {
+                logger.info('Continuing');
             }
-            logger.info('Failed links', Array.from(failedLinks.values()));
-            logger.info('Completed links', Array.from(completedLinks.values()));
         }
 
         const links = linksRes.map((link) => {
@@ -106,7 +163,9 @@ async function dailyQueueJob(job: Bull.Job, done: Bull.DoneCallback) {
                 url: link.url,
                 timing: link.timing,
                 cronHistoryId: jobHistory.id,
+                includeParams: link.domains.includeParams,
                 onCompleteFn: onCompleteFn,
+                params: link.params || '',
             });
             if (!additionResponse) {
                 logger.error('Error in adding job to puppetter queue');
@@ -120,4 +179,22 @@ async function dailyQueueJob(job: Bull.Job, done: Bull.DoneCallback) {
         done(error);
     }
 }
+
+async function reQueueFailedLinks(failedLinks: string[]) {
+    logger.info('Requeueing failed links', { failedLinks });
+    failedLinks.forEach(async (link) => {
+        const { hashedLink } = await getHash(link, config.scraper.hashLength);
+        await singleLinkQueue.add(
+            'single_link_scrape_job',
+            { timing: 'DAILY', hash: hashedLink },
+            {
+                priority: 2,
+                attempts: 5,
+                backoff: { type: 'exponential', delay: 60 * 1000 },
+                removeOnComplete: true,
+            }
+        );
+    });
+}
+
 export default dailyQueueJob;

@@ -57,6 +57,7 @@ model domains {
   createdAt          DateTime                   @default(now())
   updatedAt          DateTime
   domainImage        String?
+  includeParams      Boolean                    @default(true)
   links              links[]
   userdomainmap      userdomainmap[]
 
@@ -83,7 +84,6 @@ model linkdata {
 
 model links {
   id               Int           @id @default(autoincrement())
-  name             String?
   url              String        @db.LongText
   hashedUrl        String        @unique(map: "Links_hashedUrl_key")
   isActive         Boolean       @default(true)
@@ -100,7 +100,7 @@ model links {
 
   @@index([domainId], map: "Links_domainId_idx")
   @@index([hashedUrl], map: "Links_hashedUrl_idx")
-  @@index([name], map: "Links_name_idx")
+  @@index([isActive])
 }
 
 model notifications {
