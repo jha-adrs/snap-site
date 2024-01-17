@@ -97,6 +97,7 @@
     "redis": "^4.6.12",
     "uuid": "^9.0.1",
     "winston": "^3.10.0",
+    "winston-daily-rotate-file": "^4.7.1",
     "xss-filters": "^1.2.7",
     "zod": "^3.22.1"
   },

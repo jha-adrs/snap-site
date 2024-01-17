@@ -13,6 +13,7 @@ async function dailyQueueJob(job: Bull.Job, done: Bull.DoneCallback) {
     // Get all data of links and start job
     try {
         logger.info('Starting dailyQueue job', job.id);
+        let cronhistoryId: number = -1;
         const linksRes = await prisma.links.findMany({
             where: {
                 timing: 'DAILY',
@@ -54,8 +55,19 @@ async function dailyQueueJob(job: Bull.Job, done: Bull.DoneCallback) {
             if (completedLinks.size + failedLinks.size === linksRes.length) {
                 logger.warn('All links completed');
                 PuppeteerCluster.emitEvent('jobFinished', 'All links completed');
-
-                done(null, 'Daily Queue Job Done');
+                if (cronhistoryId !== -1) {
+                    await prisma.cronhistory.update({
+                        where: {
+                            id: cronhistoryId,
+                        },
+                        data: {
+                            status: 'SUCCESS',
+                            endTime: new Date(),
+                            updatedAt: new Date(),
+                        },
+                    });
+                }
+                return done(null, 'Daily Queue Job Done');
             }
             logger.info('Failed links', Array.from(failedLinks.values()));
             logger.info('Completed links', Array.from(completedLinks.values()));
@@ -84,6 +96,7 @@ async function dailyQueueJob(job: Bull.Job, done: Bull.DoneCallback) {
                 id: true,
             },
         });
+        cronhistoryId = jobHistory.id;
         if (linksRes.length === 0) {
             done(null, 'No links found');
             return;

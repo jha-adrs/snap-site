@@ -1,6 +1,7 @@
 import winston from 'winston';
 import config from './config';
-
+import 'winston-daily-rotate-file';
+import DailyRotateFile from 'winston-daily-rotate-file';
 // Format error stack trace
 const enumerateErrorFormat = winston.format((info) => {
     if (info instanceof Error) {
@@ -22,6 +23,16 @@ const enumerateErrorFormat = winston.format((info) => {
 //     };
 // };
 
+const transport: DailyRotateFile = new winston.transports.DailyRotateFile({
+    filename: 'logs/%DATE%.log',
+    datePattern: 'YYYY-MM-DD-HH',
+    maxSize: '20m',
+    zippedArchive: true,
+});
+// transport.on('rotate', function (oldFilename, newFilename) {
+
+// });
+
 const logger = winston.createLogger({
     level: config.env === 'development' ? 'debug' : 'info',
     format: winston.format.combine(
@@ -39,6 +50,7 @@ const logger = winston.createLogger({
         new winston.transports.Console({
             stderrLevels: ['error'],
         }),
+        transport,
     ],
 });
 export default logger;
