@@ -3,4 +3,4 @@ version: '3.8'
 services:
   node-app:
     container_name: node-app-test
-    command: sh -c "yarn db:push && yarn test"
+    command: sh -c "npm run db:push && npm run test"

@@ -1,13 +1,13 @@
 // Responsible for handling all the logic related to the links
 
 import prisma from '@/client';
-import { LinkList } from '@/types/jobs';
-import { Timing } from '@prisma/client';
+import logger from '@/config/logger';
+import { links_timing } from '@prisma/client';
 
-const fetchLinks = async (timing: Timing): Promise<LinkList[]> => {
+async function fetchLinks(timing: links_timing) {
     const links = await prisma.links.findMany({
         where: {
-            timing,
+            timing: timing,
             isActive: true,
         },
         select: {
@@ -17,12 +17,52 @@ const fetchLinks = async (timing: Timing): Promise<LinkList[]> => {
             timing: true,
             hasConfigChanged: true,
             domainId: true,
-            domain: true,
+            domains: true,
         },
     });
     return links;
-};
+}
+
+interface AddLinkDataParams {
+    htmlObjectKey: string;
+    screenshotKey: string;
+    timing: links_timing;
+    metadata: {
+        html: any;
+        screenshot: any;
+    };
+    images: {
+        fullPage: string;
+    };
+    hashedUrl: string;
+}
+
+async function addLinkData(data: AddLinkDataParams) {
+    try {
+        logger.info('Adding link data', data);
+        if (!data.htmlObjectKey || !data.screenshotKey || !data.metadata || !data.images) {
+            throw new Error('Invalid data');
+        }
+
+        await prisma.linkdata.create({
+            data: {
+                metadata: data.metadata,
+                status: 'SUCCESS',
+                images: data.images,
+                updatedAt: new Date(),
+                hashedUrl: data.hashedUrl,
+                htmlObjectKey: data.htmlObjectKey,
+                screenshotKey: data.screenshotKey,
+                timing: data.timing,
+            },
+        });
+    } catch (error) {
+        logger.error('Error in adding link data', error);
+        throw new Error('Error in adding link data');
+    }
+}
 
 export default {
     fetchLinks,
+    addLinkData,
 };

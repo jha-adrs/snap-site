@@ -1,40 +1,43 @@
-import prisma from '@/client';
 import logger from '@/config/logger';
-import { CronStatus, Timing } from '@prisma/client';
-import { schedule } from 'node-cron';
-import { v4 } from 'uuid';
-import { linksService } from '@/services';
-import { JobData } from '@/types/jobs';
-import DailyJob from './daily/job';
-// Import jobs
-// Daily job to fetch links
-schedule('0 0 * * *', async () => {
-    logger.info('Running daily job to fetch links');
-    // Fetch links
-    // Start worker threads
-    // Wait for all threads to finish
-    // Save links to db
-    // Save cron history
+import dailyQueueJob, { dailyQueue } from './daily-links';
+import weeklyQueueJob, { weeklyQueue } from './weekly-links';
+import monthlyQueueJob, { monthlyQueue } from './monthly-links';
+import singleLinkQueueJob, { singleLinkQueue } from './single-link';
 
-    // Generate uuid for cron history
-    const uuid = v4();
-    const jobData: JobData = {
-        uuid,
-        status: CronStatus.PENDING,
-        startTime: new Date(),
-        links: [],
-    };
-    // Fetch links from db
-    const links = await linksService.fetchLinks(Timing.DAILY);
-    jobData.links = links;
-    await prisma.cronHistory.create({
-        data: {
-            status: CronStatus.PENDING,
-            startTime: new Date(),
-            data: jobData as object,
-        },
-    });
-    // Start worker threads
-    logger.info(`Starting worker threads for job ${uuid}`, jobData);
-    DailyJob(jobData);
+logger.info('Starting Job Handler');
+
+dailyQueue.process('daily_scrape_job', async (job, done) => {
+    logger.info('daily_scrape_job');
+    dailyQueueJob(job, done);
 });
+
+weeklyQueue.process('weekly_scrape_job', async (job, done) => {
+    logger.info('weekly_scrape_job');
+    weeklyQueueJob(job, done);
+});
+
+monthlyQueue.process('monthly_scrape_job', async (job, done) => {
+    logger.info('monthly_scrape_job');
+    monthlyQueueJob(job, done);
+});
+
+singleLinkQueue.process('single_link_scrape_job', async (job, done) => {
+    logger.warn('Start single link job');
+    const res = await singleLinkQueueJob(job.data);
+    done(null, res);
+});
+
+// dailyQueue.process('dailyLinkScraper', async (job, done) => {
+//     logger.warn('dailyLinkScraper');
+//     done(null);
+// });
+
+// weeklyQueue.process('weeklyScrapeQueue', async (job, done) => {
+//     logger.warn('weeklyLinkScraper');
+//     done(null);
+// });
+
+// monthlyQueue.process('monthlyScrapeQueue', async (job, done) => {
+//     logger.warn('monthlyLinkScraper');
+//     done(null);
+// });

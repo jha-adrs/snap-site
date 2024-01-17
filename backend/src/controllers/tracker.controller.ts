@@ -1,102 +1,84 @@
-import prisma from '@/client';
 import logger from '@/config/logger';
+import { dailyQueue } from '@/jobs/daily-links';
+import { monthlyQueue } from '@/jobs/monthly-links';
+import { singleLinkQueue } from '@/jobs/single-link';
+import { weeklyQueue } from '@/jobs/weekly-links';
+import { fileService } from '@/services';
 import catchAsync from '@/utils/catchAsync';
-import getHash from '@/utils/link-shortener';
-import pick from '@/utils/pick';
-import getPrismaErrorMessage from '@/utils/prismaErrorHandler';
 import { trackerValidation } from '@/validations';
-import { User } from '@prisma/client';
+const startCron = catchAsync(async (req, res) => {
+    try {
+        logger.info(`Start cron start`);
+        const { timing } = await trackerValidation.startCron.parseAsync(req.body);
+        if (timing === 'DAILY') {
+            await dailyQueue.add('daily_scrape_job', {
+                priority: 1,
+                attempts: 1,
+                backoff: { type: 'exponential', delay: 60 * 1000 },
+                removeOnComplete: true,
+            });
+        } else if (timing === 'WEEKLY') {
+            await weeklyQueue.add('weekly_scrape_job', {
+                priority: 1,
+                attempts: 1,
+                backoff: { type: 'exponential', delay: 60 * 1000 },
+                removeOnComplete: true,
+            });
+        } else if (timing === 'MONTHLY') {
+            await monthlyQueue.add('monthly_scrape_job', {
+                priority: 1,
+                attempts: 1,
+                backoff: { type: 'exponential', delay: 60 * 1000 },
+                removeOnComplete: true,
+            });
+        }
 
-const getLinks = catchAsync(async (req, res) => {
-    logger.info(`Get links ${JSON.stringify(req.user)}`);
-    // Get all links for a user
-    const user = req.user as User;
-    // TODO: Add pagination and search options sort order
-    const query = pick(req.query, ['sortBy', 'sortOrder', 'limit', 'page', 'timing', 'name']);
-    const links = await prisma.userLinkMap.findMany({
-        where: {
-            userId: user.id,
-        },
-        select: {
-            link: true,
-        },
-        orderBy: {
-            createdAt: 'desc',
-        },
-    });
-    logger.info(
-        `Links ${JSON.stringify(links)} and query ${JSON.stringify(
-            query
-        )} for user ${JSON.stringify(user)}`
-    );
-    return res.status(200).send(links);
+        logger.info('scrape job added', timing);
+        return res.status(200).json({ success: 1, message: 'OK' });
+    } catch (error) {
+        logger.error('Error in tracker controller', error);
+        return res.status(500).json({ success: 0, message: 'Something went wrong' });
+    }
 });
 
-const addLink = catchAsync(async (req, res) => {
+const singleLinkCron = catchAsync(async (req, res) => {
     try {
-        // Add a link for a user
-        const user = req.user as User;
-        if (!user || !user.id) {
-            return res.status(401).send('Unauthorized');
-        }
-        //const data = pick(req.body, ['url', 'trackingImage', 'timing', 'assignedName', 'tags']);
-        const { body } = await trackerValidation.addLink.parseAsync(req);
-        const data = body;
-        //Extract domain from url
-        if (!data.url) {
-            return res.status(400).send('Bad request');
-        }
-        const domain = new URL(data.url as string).hostname;
-        const hashedURL = await getHash(data.url as string, 6);
-        logger.info(
-            `Add link ${JSON.stringify(data)} for user ${JSON.stringify(
-                user
-            )} hashedURL ${JSON.stringify(hashedURL.hashedLink)}`
+        logger.info('Starting single link cron');
+        const { timing, hash } = await trackerValidation.singleLinkCron.parseAsync(req.body);
+        await singleLinkQueue.add(
+            'single_link_scrape_job',
+            { timing, hash },
+            {
+                priority: 1,
+                attempts: 10,
+                backoff: { type: 'exponential', delay: 60 * 1000 },
+                removeOnComplete: true,
+            }
         );
-        const [createRes] = await prisma.$transaction(async (prisma) => {
-            const domainRes = await prisma.domains.upsert({
-                where: {
-                    domain,
-                },
-                create: {
-                    domain,
-                },
-                update: {
-                    domain,
-                },
-            });
-            const linkRes = await prisma.links.create({
-                data: {
-                    url: data.url,
-                    trackingImage: data.trackingImage,
-                    timing: data.timing,
-                    domainId: domainRes.id,
-                    hashedUrl: hashedURL.hashedLink,
-                },
-            });
-
-            const userLinkMapRes = await prisma.userLinkMap.create({
-                data: {
-                    userId: user.id,
-                    linkId: linkRes.id,
-                    assignedName: data.assignedName,
-                    tags: JSON.stringify(data.tags),
-                },
-            });
-
-            return [userLinkMapRes, linkRes, domainRes];
-        });
-
-        logger.info(`Added link ${JSON.stringify(createRes)}`);
-        return res.status(200).send(createRes);
+        return res.status(200).json({ success: 1, message: 'OK' });
     } catch (error) {
-        logger.error(`Error adding link ${JSON.stringify(error)}`);
-        getPrismaErrorMessage(error, null);
-        return res.status(500).send('Internal server error');
+        logger.error('Error in singleLinkCron', error);
+        return res.status(500).json({ success: 0, message: 'Something went wrong' });
+    }
+});
+
+const getPresignedURL = catchAsync(async (req, res) => {
+    try {
+        logger.info('Getting presigned url');
+        const key = req.body.key;
+        if (!key) {
+            return res.status(400).json({ success: 0, message: 'Invalid key' });
+        }
+        const url = await fileService.getPresignedURL(key);
+        return res.status(200).json({ success: 1, message: 'OK', data: url });
+    } catch (error) {
+        logger.error('Error in getPresignedURL', error);
+        return res.status(500).json({ success: 0, message: 'Something went wrong' });
     }
 });
 
 export default {
-    getLinks,
-    addLink,
+    startCron,
+    singleLinkCron,
+    getPresignedURL,
 };
