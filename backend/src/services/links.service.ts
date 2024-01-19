@@ -11,7 +11,6 @@ async function fetchLinks(timing: links_timing) {
             isActive: true,
         },
         select: {
-            name: true,
             url: true,
             isActive: true,
             timing: true,
@@ -26,6 +25,7 @@ async function fetchLinks(timing: links_timing) {
 interface AddLinkDataParams {
     htmlObjectKey: string;
     screenshotKey: string;
+    thumbnailKey: string;
     timing: links_timing;
     metadata: {
         html: any;
@@ -53,6 +53,7 @@ async function addLinkData(data: AddLinkDataParams) {
                 hashedUrl: data.hashedUrl,
                 htmlObjectKey: data.htmlObjectKey,
                 screenshotKey: data.screenshotKey,
+                thumbnailKey: data.thumbnailKey,
                 timing: data.timing,
             },
         });

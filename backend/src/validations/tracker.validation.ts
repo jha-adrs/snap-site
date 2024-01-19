@@ -25,7 +25,16 @@ export const getDomainObjects = z
         message: 'Either url or domain should be present',
     });
 export const getMultiplePresignedURLs = z.object({
-    keys: z.array(z.string()),
+    url: z.string().url(),
+    hashedUrl: z.string().length(config.scraper.hashLength),
+    timing: z.enum(['DAILY', 'WEEKLY', 'MONTHLY']),
+    keys: z.array(
+        z.object({
+            htmlObjectKey: z.string(),
+            screenshotObjectKey: z.string(),
+            thumbnailObjectKey: z.string(),
+        })
+    ),
 });
 
 export default {
@@ -33,4 +42,5 @@ export default {
     singleLinkCron,
     getPresignedURL,
     getDomainObjects,
+    getMultiplePresignedURLs,
 };

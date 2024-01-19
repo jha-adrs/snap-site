@@ -178,6 +178,7 @@ export async function fullScrapeCluster({ page, data }: FullScrapeClusterType) {
         // Wait for the page to load
         const html = await page.content();
         const screenshot = await page.screenshot({ fullPage: true });
+        const smallScreenshot = await page.screenshot({ fullPage: false });
         // Save html and screenshot to S3
         const { hashedLink, originalLink } = await getHash(
             finalScrapingUrl,
@@ -204,12 +205,23 @@ export async function fullScrapeCluster({ page, data }: FullScrapeClusterType) {
             timing: data.timing,
             timestamp,
         });
+        const smallScreenshotUploadRes = await fileService.uploadFile({
+            fileName: `${hashedLink}-small`,
+            file: smallScreenshot,
+            domainName: urlObj.hostname,
+            originalUrl: originalLink,
+            hashedUrl: hashedLink,
+            fileType: 'png',
+            timing: data.timing,
+            timestamp,
+        });
         logger.info('File upload response', { htmlUploadRes, screenshotUploadRes });
         // Extract price from the page if priceElement is provided later
         // Add link data
         await linksService.addLinkData({
             htmlObjectKey: htmlUploadRes.key,
             screenshotKey: screenshotUploadRes.key,
+            thumbnailKey: smallScreenshotUploadRes.key,
             timing: data.timing,
             metadata: {
                 html: htmlUploadRes.metadata ? htmlUploadRes.metadata : {},

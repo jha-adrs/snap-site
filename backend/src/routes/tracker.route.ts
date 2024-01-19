@@ -9,5 +9,5 @@ router.get('/start/single', trackerController.singleLinkCron, trackerController.
 router.get('/start', validate(trackerValidation.startCron), trackerController.startCron);
 router.get('/getPresignedURL', trackerController.getPresignedURL);
 router.get('/listS3Objects', trackerController.getDomainObjects);
-router.get('/multiplePresignedURL', trackerController.getMultiplePresignedURLs);
+router.post('/multiplePresignedURL', trackerController.getMultiplePresignedURLs);
 export default router;

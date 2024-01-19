@@ -4,6 +4,7 @@ import { monthlyQueue } from '@/jobs/monthly-links';
 import { singleLinkQueue } from '@/jobs/single-link';
 import { weeklyQueue } from '@/jobs/weekly-links';
 import { fileService } from '@/services';
+import { LinkDataKeys } from '@/types/response';
 import catchAsync from '@/utils/catchAsync';
 import { isValidUrl } from '@/utils/urlUtils';
 import { trackerValidation } from '@/validations';
@@ -101,13 +102,40 @@ const getDomainObjects = catchAsync(async (req, res) => {
 
 const getMultiplePresignedURLs = catchAsync(async (req, res) => {
     try {
+        //TODO: Cache the presigned urls in redis
         logger.info('Getting multiple presigned urls');
-        const keys = req.body.keys;
-        if (!keys || !Array.isArray(keys)) {
-            return res.status(400).json({ success: 0, message: 'Invalid keys' });
-        }
-        const urls = await Promise.all(keys.map((key) => fileService.getPresignedURL(key)));
-        return res.status(200).json({ success: 1, message: 'OK', data: urls });
+        const { url, hashedUrl, timing, keys } =
+            await trackerValidation.getMultiplePresignedURLs.parseAsync(req.body);
+        logger.info('Getting keys', { keys, url, hashedUrl, timing });
+        const presignedURLs: LinkDataKeys[] = [];
+        keys.map(async (key) => {
+            const { htmlObjectKey, screenshotObjectKey, thumbnailObjectKey } = key;
+            const urls = await Promise.all([
+                fileService.getPresignedURL(`${htmlObjectKey}`),
+                fileService.getPresignedURL(`${screenshotObjectKey}`),
+                fileService.getPresignedURL(`${thumbnailObjectKey}`),
+            ]);
+            if (urls.length === 3 && urls[0] && urls[1] && urls[2]) {
+                presignedURLs.push(
+                    {
+                        key: htmlObjectKey,
+                        url: urls[0].url,
+                    },
+                    {
+                        key: screenshotObjectKey,
+                        url: urls[1].url,
+                    },
+                    {
+                        key: thumbnailObjectKey,
+                        url: urls[2].url,
+                    }
+                );
+            } else {
+                logger.error('Error in getting multiple presigned urls', urls);
+            }
+        });
+
+        return res.status(200).json({ success: 1, message: 'OK', data: presignedURLs });
     } catch (error) {
         logger.error('Error in getMultiplePresignedURLs', error);
         return res.status(500).json({ success: 0, message: 'Something went wrong' });

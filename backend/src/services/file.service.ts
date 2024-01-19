@@ -129,7 +129,10 @@ async function getPresignedURL(key: string) {
     try {
         logger.info('Getting presigned URL', { key });
         const command = new GetObjectCommand({ Bucket: config.aws.s3BucketName, Key: key });
-        return getSignedUrl(client, command, { expiresIn: 86400 });
+        return {
+            key,
+            url: await getSignedUrl(client, command, { expiresIn: 86400 }),
+        };
     } catch (error) {
         logger.error('Error in getting presigned URL', error);
         return null;
