@@ -127,7 +127,7 @@ const getS3Object = async ({ key, bucketName, contentEncoding }: GetS3ObjectPara
 
 async function getPresignedURL(key: string) {
     try {
-        logger.info('Getting presigned URL', { key });
+        logger.info('Getting presigned URL');
         const command = new GetObjectCommand({ Bucket: config.aws.s3BucketName, Key: key });
         return {
             key,
