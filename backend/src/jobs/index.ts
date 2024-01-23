@@ -5,6 +5,7 @@ import monthlyQueueJob, { monthlyQueue } from './monthly-links';
 import singleLinkQueueJob, { singleLinkQueue } from './single-link';
 
 logger.info('Starting Job Handler');
+// Clear all jobs
 
 dailyQueue.process('daily_scrape_job', async (job, done) => {
     logger.info('daily_scrape_job');
@@ -23,8 +24,7 @@ monthlyQueue.process('monthly_scrape_job', async (job, done) => {
 
 singleLinkQueue.process('single_link_scrape_job', async (job, done) => {
     logger.warn('Start single link job');
-    const res = await singleLinkQueueJob(job.data);
-    done(null, res);
+    singleLinkQueueJob(job.data, done);
 });
 
 // dailyQueue.process('dailyLinkScraper', async (job, done) => {

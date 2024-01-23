@@ -10,16 +10,16 @@ datasource db {
 model account {
   id                String  @id
   userId            String
+  type              String
+  provider          String
   providerAccountId String
+  refresh_token     String? @db.Text
   access_token      String? @db.Text
   expires_at        Int?
-  id_token          String? @db.Text
-  provider          String
-  refresh_token     String? @db.Text
-  scope             String?
-  session_state     String?
   token_type        String?
-  type              String
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
   user              user    @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Account_userId_fkey")
 
   @@unique([provider, providerAccountId], map: "Account_provider_providerAccountId_key")
@@ -57,6 +57,7 @@ model domains {
   createdAt          DateTime                   @default(now())
   updatedAt          DateTime
   domainImage        String?
+  includeParams      Boolean                    @default(true)
   links              links[]
   userdomainmap      userdomainmap[]
 
@@ -74,6 +75,7 @@ model linkdata {
   metadata      Json
   htmlObjectKey String          @db.LongText
   screenshotKey String          @db.LongText
+  thumbnailKey  String          @db.LongText
   timing        linkdata_timing
 
   @@unique([hashedUrl, createdAt], map: "LinkData_hashedUrl_createdAt_key")
@@ -83,9 +85,9 @@ model linkdata {
 
 model links {
   id               Int           @id @default(autoincrement())
-  name             String?
   url              String        @db.LongText
   hashedUrl        String        @unique(map: "Links_hashedUrl_key")
+  params           String?
   isActive         Boolean       @default(true)
   trackingImage    Boolean       @default(false)
   imageUrl         String?
@@ -94,24 +96,23 @@ model links {
   domainId         Int
   createdAt        DateTime      @default(now())
   updatedAt        DateTime
-  params           String?
   domains          domains       @relation(fields: [domainId], references: [id], map: "Links_domainId_fkey")
   userlinkmap      userlinkmap[]
 
   @@index([domainId], map: "Links_domainId_idx")
   @@index([hashedUrl], map: "Links_hashedUrl_idx")
-  @@index([name], map: "Links_name_idx")
+  @@index([isActive])
 }
 
 model notifications {
   id          Int                    @id @default(autoincrement())
   userId      String
   message     String
+  description String?
   readStatus  Boolean                @default(false)
   priority    notifications_priority @default(LOW)
   createdAt   DateTime               @default(now())
   updatedAt   DateTime
-  description String?
   user        user                   @relation(fields: [userId], references: [id], map: "Notifications_userId_fkey")
 
   @@index([userId], map: "Notifications_userId_fkey")
@@ -128,9 +129,9 @@ model organization {
 
 model session {
   id           String   @id
+  sessionToken String   @unique(map: "Session_sessionToken_key")
   userId       String
   expires      DateTime
-  sessionToken String   @unique(map: "Session_sessionToken_key")
   user         user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Session_userId_fkey")
 
   @@index([userId], map: "Session_userId_fkey")
@@ -138,14 +139,14 @@ model session {
 
 model user {
   id            String          @id
-  email         String          @unique(map: "User_email_key")
   name          String?
+  email         String          @unique(map: "User_email_key")
+  emailVerified DateTime?
+  image         String?
   password      String?
   role          user_role       @default(USER)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime
-  image         String?
-  emailVerified DateTime?
   account       account[]
   notifications notifications[]
   organization  organization?
