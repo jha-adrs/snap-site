@@ -77,6 +77,8 @@ model linkdata {
   screenshotKey String          @db.LongText
   thumbnailKey  String          @db.LongText
   timing        linkdata_timing
+  bookmarks     bookmarks[]
+  links         links           @relation(fields: [hashedUrl], references: [hashedUrl], map: "LinkData_linkId_fkey")
 
   @@unique([hashedUrl, createdAt], map: "LinkData_hashedUrl_createdAt_key")
   @@index([createdAt], map: "LinkData_createdAt_idx")
@@ -84,20 +86,23 @@ model linkdata {
 }
 
 model links {
-  id               Int           @id @default(autoincrement())
-  url              String        @db.LongText
-  hashedUrl        String        @unique(map: "Links_hashedUrl_key")
-  params           String?
-  isActive         Boolean       @default(true)
-  trackingImage    Boolean       @default(false)
-  imageUrl         String?
-  hasConfigChanged Boolean       @default(false)
-  timing           links_timing  @default(WEEKLY)
-  domainId         Int
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime
-  domains          domains       @relation(fields: [domainId], references: [id], map: "Links_domainId_fkey")
-  userlinkmap      userlinkmap[]
+  id                 Int               @id @default(autoincrement())
+  url                String            @db.LongText
+  hashedUrl          String            @unique(map: "Links_hashedUrl_key")
+  params             String?
+  isActive           Boolean           @default(true)
+  trackingImage      Boolean           @default(false)
+  imageUrl           String?
+  hasConfigChanged   Boolean           @default(false)
+  timing             links_timing      @default(WEEKLY)
+  domainId           Int
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime
+  enablePriceTracker Boolean           @default(false)
+  failedcronlinks    failedcronlinks[]
+  linkdata           linkdata[]
+  domains            domains           @relation(fields: [domainId], references: [id], map: "Links_domainId_fkey")
+  userlinkmap        userlinkmap[]
 
   @@index([domainId], map: "Links_domainId_idx")
   @@index([hashedUrl], map: "Links_hashedUrl_idx")
@@ -148,6 +153,7 @@ model user {
   createdAt     DateTime        @default(now())
   updatedAt     DateTime
   account       account[]
+  bookmarks     bookmarks[]
   notifications notifications[]
   organization  organization?
   session       session[]
@@ -171,7 +177,7 @@ model userdomainmap {
 
 model userlinkmap {
   id           Int                @id @default(autoincrement())
-  assignedName String?
+  assignedName String
   tags         String?
   userId       String
   linkId       Int
@@ -203,6 +209,34 @@ model verificationtoken {
   expires    DateTime
 
   @@unique([identifier, token], map: "VerificationToken_identifier_token_key")
+}
+
+model bookmarks {
+  id         Int      @id @default(autoincrement())
+  userId     String
+  linkDataId Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime
+  isDeleted  Boolean  @default(false)
+  linkdata   linkdata @relation(fields: [linkDataId], references: [id], map: "Bookmarks_linkDataId_fkey")
+  user       user     @relation(fields: [userId], references: [id], map: "Bookmarks_userId_fkey")
+
+  @@unique([userId, linkDataId], map: "Bookmarks_userId_linkDataId_key")
+  @@index([linkDataId], map: "Bookmarks_linkDataId_fkey")
+  @@index([userId], map: "Bookmarks_userId_idx")
+}
+
+model failedcronlinks {
+  id        Int                    @id @default(autoincrement())
+  linkId    Int
+  hashedUrl String
+  timing    failedcronlinks_timing
+  createdAt DateTime               @default(now())
+  updatedAt DateTime
+  links     links                  @relation(fields: [linkId], references: [id], map: "FailedCronLinks_linkId_fkey")
+
+  @@index([hashedUrl], map: "FailedCronLinks_hashedUrl_idx")
+  @@index([linkId], map: "FailedCronLinks_linkId_fkey")
 }
 
 enum cron_timing {
@@ -262,6 +296,13 @@ enum links_timing {
 }
 
 enum linkdata_timing {
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum failedcronlinks_timing {
   HOURLY
   DAILY
   WEEKLY

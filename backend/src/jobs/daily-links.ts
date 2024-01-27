@@ -21,6 +21,9 @@ async function dailyQueueJob(job: Bull.Job, done: Bull.DoneCallback) {
                 timing: 'DAILY',
                 isActive: true,
             },
+            orderBy: {
+                hashedUrl: 'asc',
+            },
             select: {
                 id: true,
                 url: true,

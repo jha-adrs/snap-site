@@ -22,12 +22,12 @@ const PuppeteerCluster = {
         logger.info('Lauching pupetter cluster');
         pupeteerCluster = await Cluster.launch({
             concurrency: Cluster.CONCURRENCY_CONTEXT, // No shared context
-            maxConcurrency: 1,
+            maxConcurrency: 4,
             monitor: false, // TODO: Change this later
             puppeteer: puppeteer,
             puppeteerOptions: {
                 headless: 'new',
-                defaultViewport: { width: 1400, height: 998, isLandscape: true },
+                defaultViewport: { width: 1400, height: 998, isLandscape: true }, // Adjust based on screenshot quality preference
                 args: [
                     '--ignore-certificate-errors',
                     '--no-sandbox',

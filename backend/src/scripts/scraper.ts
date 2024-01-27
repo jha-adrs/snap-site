@@ -174,7 +174,7 @@ export async function fullScrapeCluster({ page, data }: FullScrapeClusterType) {
         const finalScrapingUrl = data.includeParams ? data.url : urlObj.origin + urlObj.pathname;
         const userAgent = new userAgents({ deviceCategory: 'desktop' });
         await page.setUserAgent(userAgent.toString());
-        await page.goto(finalScrapingUrl, { waitUntil: 'networkidle2', timeout: 120000 });
+        await page.goto(finalScrapingUrl, { waitUntil: 'networkidle2', timeout: 0 });
         // Wait for the page to load
         const html = await page.content();
         const screenshot = await page.screenshot({ fullPage: true });

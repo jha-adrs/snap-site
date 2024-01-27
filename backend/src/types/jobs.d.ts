@@ -26,3 +26,10 @@ export interface SingleLinkJobData {
     hash: string;
     timing: links_timing;
 }
+
+export interface AddLinkJobData {
+    id: number;
+    fileUrl: string;
+    autoAssignName: boolean;
+    tags: string[];
+}
