@@ -21,6 +21,9 @@ async function dailyQueueJob(job: Bull.Job, done: Bull.DoneCallback) {
                 timing: 'DAILY',
                 isActive: true,
             },
+            orderBy: {
+                hashedUrl: 'asc',
+            },
             select: {
                 id: true,
                 url: true,
@@ -188,9 +191,9 @@ async function reQueueFailedLinks(failedLinks: string[]) {
             'single_link_scrape_job',
             { timing: 'DAILY', hash: hashedLink },
             {
-                priority: 2,
-                attempts: 5,
-                backoff: { type: 'exponential', delay: 60 * 1000 },
+                priority: 1,
+                attempts: 3,
+                backoff: { type: 'fixed', delay: 1000 },
                 removeOnComplete: true,
             }
         );

@@ -3,11 +3,26 @@ const router = express.Router();
 import { trackerController } from '@/controllers';
 import validate from '@/middlewares/validate';
 import { trackerValidation } from '@/validations';
-//router.use(auth());
+import auth from '@/middlewares/auth';
+router.use(auth());
 //Receive hashedURL and get history of the link
-router.post('/start/single', trackerController.singleLinkCron, trackerController.singleLinkCron);
+router.post(
+    '/start/single',
+    validate(trackerValidation.singleLinkCron),
+    trackerController.singleLinkCron
+);
 router.post('/start', validate(trackerValidation.startCron), trackerController.startCron);
-router.get('/getPresignedURL', trackerController.getPresignedURL);
-router.get('/listS3Objects', trackerController.getDomainObjects);
-router.post('/multiplePresignedURL', trackerController.getMultiplePresignedURLs);
+router.get(
+    '/getPresignedURL',
+    validate(trackerValidation.getPresignedURL),
+    trackerController.getPresignedURL
+);
+router.post(
+    '/multiplePresignedURL',
+    validate(trackerValidation.getMultiplePresignedURLs),
+    trackerController.getMultiplePresignedURLs
+);
+// Starts rescrape job for links which have not been scraped in last 3 days
+router.post('/rescrape', validate(trackerValidation.rescrape), trackerController.scheduledRescrape);
+
 export default router;

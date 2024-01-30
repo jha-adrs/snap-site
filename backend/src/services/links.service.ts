@@ -80,7 +80,7 @@ const getMultiplePresignedURLService = (req: any) => {
                     fileService.getPresignedURL(`${screenshotObjectKey}`),
                     fileService.getPresignedURL(`${thumbnailObjectKey}`),
                 ]);
-                logger.info('Got presigned urls');
+                //logger.info('Got presigned urls');
                 if (urls.length === 3 && urls[0] && urls[1] && urls[2]) {
                     presignedURLs.push(
                         {

@@ -174,7 +174,8 @@ export async function fullScrapeCluster({ page, data }: FullScrapeClusterType) {
         const finalScrapingUrl = data.includeParams ? data.url : urlObj.origin + urlObj.pathname;
         const userAgent = new userAgents({ deviceCategory: 'desktop' });
         await page.setUserAgent(userAgent.toString());
-        await page.goto(finalScrapingUrl, { waitUntil: 'networkidle2', timeout: 120000 });
+        await page.setDefaultNavigationTimeout(2 * 60 * 1000);
+        await page.goto(finalScrapingUrl, { waitUntil: 'networkidle2' });
         // Wait for the page to load
         const html = await page.content();
         const screenshot = await page.screenshot({ fullPage: true });
@@ -215,7 +216,7 @@ export async function fullScrapeCluster({ page, data }: FullScrapeClusterType) {
             timing: data.timing,
             timestamp,
         });
-        logger.info('File upload response', { htmlUploadRes, screenshotUploadRes });
+        //logger.info('File upload response', { htmlUploadRes, screenshotUploadRes });
         // Extract price from the page if priceElement is provided later
         // Add link data
         await linksService.addLinkData({
@@ -232,7 +233,7 @@ export async function fullScrapeCluster({ page, data }: FullScrapeClusterType) {
         });
         // Close page
         //await page.close();
-        await page.goto('about:blank');
+        //await page.goto('about:blank');
         //Clear cache and cookies
         // await page.evaluate(() => {
         //     localStorage.clear();

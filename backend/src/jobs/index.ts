@@ -27,6 +27,8 @@ singleLinkQueue.process('single_link_scrape_job', async (job, done) => {
     singleLinkQueueJob(job.data, done);
 });
 
+// Add link job through FILE upload
+
 // dailyQueue.process('dailyLinkScraper', async (job, done) => {
 //     logger.warn('dailyLinkScraper');
 //     done(null);
