@@ -41,6 +41,7 @@ const envVarsSchema = z.object({
     AWS_BUCKET_REGION: z.string().default('us-east-1').describe('AWS S3 bucket region'),
     HASHLENGTH: z.coerce.number().default(5).describe('Hash length for the shortened URL'),
     API_SECRET: z.string().describe('API secret key from nextJS app'),
+    SLACK_WEBHOOK_URL: z.string().describe('Slack webhook URL'),
 });
 
 // Validate env vars
@@ -85,5 +86,8 @@ export default {
     scraper: {
         hashLength: envVars.data.HASHLENGTH,
         API_SECRET: envVars.data.API_SECRET,
+    },
+    slack: {
+        webhookURL: envVars.data.SLACK_WEBHOOK_URL,
     },
 };

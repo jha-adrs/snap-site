@@ -6,6 +6,7 @@ import { singleLinkQueue } from '@/jobs/single-link';
 import { weeklyQueue } from '@/jobs/weekly-links';
 import { fileService, linksService } from '@/services';
 import catchAsync from '@/utils/catchAsync';
+import { postToSlack } from '@/utils/slack';
 import { isValidUrl } from '@/utils/urlUtils';
 import { trackerValidation } from '@/validations';
 const startCron = catchAsync(async (req, res) => {
@@ -157,6 +158,7 @@ const scheduledRescrape = catchAsync(async (req, res) => {
         },
     });
     logger.info('Found unscraped links', { length: unscrapedLinks.length });
+    postToSlack(`Found ${unscrapedLinks.length} unscraped links, starting rescrape for ${timing}`);
     res.status(200).json({ success: 1, message: 'OK', data: unscrapedLinks, count });
 });
 
