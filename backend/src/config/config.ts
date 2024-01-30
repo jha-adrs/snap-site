@@ -40,6 +40,7 @@ const envVarsSchema = z.object({
     AWS_S3_BUCKET_NAME: z.string().describe('AWS S3 bucket name'),
     AWS_BUCKET_REGION: z.string().default('us-east-1').describe('AWS S3 bucket region'),
     HASHLENGTH: z.coerce.number().default(5).describe('Hash length for the shortened URL'),
+    API_SECRET: z.string().describe('API secret key from nextJS app'),
 });
 
 // Validate env vars
@@ -83,5 +84,6 @@ export default {
     },
     scraper: {
         hashLength: envVars.data.HASHLENGTH,
+        API_SECRET: envVars.data.API_SECRET,
     },
 };

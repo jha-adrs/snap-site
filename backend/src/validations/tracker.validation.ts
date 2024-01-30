@@ -37,10 +37,15 @@ export const getMultiplePresignedURLs = z.object({
     ),
 });
 
+export const rescrape = z.object({
+    timing: z.enum(['DAILY', 'WEEKLY', 'MONTHLY']),
+});
+
 export default {
     startCron,
     singleLinkCron,
     getPresignedURL,
     getDomainObjects,
     getMultiplePresignedURLs,
+    rescrape,
 };

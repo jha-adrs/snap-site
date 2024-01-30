@@ -2,7 +2,7 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import puppeteer from 'puppeteer-extra';
 import logger from '@/config/logger';
 import { Cluster } from 'puppeteer-cluster';
-import { fullScrapeCluster, takeScreenshotCluster } from '@/scripts/scraper';
+import { fullScrapeCluster } from '@/scripts/scraper';
 import { links_timing } from '@prisma/client';
 
 puppeteer.use(StealthPlugin());
@@ -27,32 +27,20 @@ const PuppeteerCluster = {
             puppeteer: puppeteer,
             puppeteerOptions: {
                 headless: 'new',
-                defaultViewport: { width: 1400, height: 998, isLandscape: true }, // Adjust based on screenshot quality preference
-                args: [
-                    '--ignore-certificate-errors',
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-accelerated-2d-canvas',
-                    '--disable-gpu',
-                ],
+                defaultViewport: { width: 1600, height: 998, isLandscape: true }, // Adjust based on screenshot quality preference
+                // args: [
+                //     '--ignore-certificate-errors',
+                //     '--no-sandbox',
+                //     '--disable-setuid-sandbox',
+                //     '--disable-accelerated-2d-canvas',
+                //     '--disable-gpu',
+                // ],
             },
-            retryDelay: 0, // TODO: Review this
+            retryDelay: 5, // TODO: Review this
             retryLimit: 0,
             sameDomainDelay: 5,
         });
         return pupeteerCluster;
-    },
-    takeScreenShot: async function ({ url, onCompleteFn }: AddToPuppeteerQueueParams) {
-        try {
-            logger.debug('Starting takeScreenshot', { url });
-            if (!pupeteerCluster) {
-                await PuppeteerCluster.launchCluster();
-            }
-            pupeteerCluster.queue({ url, onCompleteFn }, takeScreenshotCluster);
-        } catch (error) {
-            logger.error('Error in screenshot function', error);
-            throw error;
-        }
     },
     fullScrape: async function ({
         url,
@@ -65,24 +53,16 @@ const PuppeteerCluster = {
         try {
             logger.info('Starting full scrape');
             if (!pupeteerCluster) {
+                logger.info('Restarting cluster');
                 await PuppeteerCluster.launchCluster();
             }
-            // Add event emitter to signal when cluster is idle or closed
-            pupeteerCluster.on('taskerror', (err, data, willRetry) => {
-                logger.error(`Error crawling :`, data, willRetry, err);
-            });
-            pupeteerCluster.on('jobFinished', (...params) => {
-                logger.info('Job finished', params);
-                pupeteerCluster.close();
-            });
-            pupeteerCluster.queue(
+            await pupeteerCluster.queue(
                 { url, timing, onCompleteFn, cronHistoryId, includeParams, params },
                 fullScrapeCluster
             );
             return true;
         } catch (error) {
             logger.info('Error in full scrape', error);
-            await PuppeteerCluster.closeCluster();
             return false;
         }
     },

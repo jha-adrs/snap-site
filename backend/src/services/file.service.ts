@@ -75,8 +75,8 @@ const uploadFile = async ({
         const response = await client.send(command);
         return { key, metadata, response };
     } catch (error) {
-        logger.error('Error in HTML File upload', error);
-        throw new Error('Error in HTML File upload');
+        logger.error('Error in  File upload', error);
+        throw new Error('Error in  File upload');
     }
 };
 

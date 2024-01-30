@@ -118,6 +118,7 @@ model notifications {
   priority    notifications_priority @default(LOW)
   createdAt   DateTime               @default(now())
   updatedAt   DateTime
+  extraData   Json?
   user        user                   @relation(fields: [userId], references: [id], map: "Notifications_userId_fkey")
 
   @@index([userId], map: "Notifications_userId_fkey")
@@ -184,6 +185,7 @@ model userlinkmap {
   timing       userlinkmap_timing @default(WEEKLY)
   createdAt    DateTime           @default(now())
   updatedAt    DateTime
+  isPaused     Boolean            @default(false)
   links        links              @relation(fields: [linkId], references: [id], map: "UserLinkMap_linkId_fkey")
   user         user               @relation(fields: [userId], references: [id], map: "UserLinkMap_userId_fkey")
 

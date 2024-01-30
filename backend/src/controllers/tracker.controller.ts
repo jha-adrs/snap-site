@@ -1,3 +1,4 @@
+import prisma from '@/client';
 import logger from '@/config/logger';
 import { dailyQueue } from '@/jobs/daily-links';
 import { monthlyQueue } from '@/jobs/monthly-links';
@@ -112,10 +113,58 @@ const getMultiplePresignedURLs = catchAsync(async (req, res) => {
     }
 });
 
+const scheduledRescrape = catchAsync(async (req, res) => {
+    logger.info('Starting scheduled rescrape');
+    const { timing } = await trackerValidation.rescrape.parseAsync(req.body);
+    // Get links which do not have linkdata in last three days
+    const unscrapedLinks = await prisma.links.findMany({
+        where: {
+            timing,
+            linkdata: {
+                none: {
+                    createdAt: {
+                        gt: new Date(new Date().getTime() - 3 * 24 * 60 * 60 * 1000),
+                    },
+                },
+            },
+        },
+        select: {
+            id: true,
+            url: true,
+            hashedUrl: true,
+            isActive: true,
+            timing: true,
+            createdAt: true,
+            params: true,
+            domains: {
+                select: {
+                    domain: true,
+                    includeParams: true, // If true, include params in the url
+                },
+            },
+        },
+    });
+    const count = await prisma.links.count({
+        where: {
+            timing,
+            linkdata: {
+                none: {
+                    createdAt: {
+                        gt: new Date(new Date().getTime() - 3 * 24 * 60 * 60 * 1000),
+                    },
+                },
+            },
+        },
+    });
+    logger.info('Found unscraped links', { length: unscrapedLinks.length });
+    res.status(200).json({ success: 1, message: 'OK', data: unscrapedLinks, count });
+});
+
 export default {
     startCron,
     singleLinkCron,
     getPresignedURL,
     getDomainObjects,
     getMultiplePresignedURLs,
+    scheduledRescrape,
 };
