@@ -15,7 +15,7 @@ class Redis {
             },
         });
 
-        client.connect();
+        //client.connect();
         client.on('error', (err) => {
             console.error('Redis Error', err);
             throw new Error(err);
@@ -26,6 +26,16 @@ class Redis {
         });
         this.redisClient = client;
     }
+    async getClient() {
+        if (!this.redisClient || !this.redisClient.isOpen) {
+            logger.info('Redis client is closed');
+            await this.redisClient.connect();
+        } else {
+            logger.info('Redis client is open');
+        }
+        return this.redisClient;
+    }
+
     async addKey(key: string, value: any, ttl?: number) {
         logger.info('Adding key value', { key, value });
         if (!this.redisClient || !this.redisClient.isOpen) {
