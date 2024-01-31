@@ -2,6 +2,7 @@ import prisma from '@/client';
 import logger from '@/config/logger';
 import { dailyQueue } from '@/jobs/daily-links';
 import { monthlyQueue } from '@/jobs/monthly-links';
+import { rescrapeLinksQueue } from '@/jobs/rescrape';
 import { singleLinkQueue } from '@/jobs/single-link';
 import { weeklyQueue } from '@/jobs/weekly-links';
 import { fileService, linksService } from '@/services';
@@ -158,8 +159,23 @@ const scheduledRescrape = catchAsync(async (req, res) => {
         },
     });
     logger.info('Found unscraped links', { length: unscrapedLinks.length });
-    postToSlack(`Found ${unscrapedLinks.length} unscraped links, starting rescrape for ${timing}`);
-    res.status(200).json({ success: 1, message: 'OK', data: unscrapedLinks, count });
+    postToSlack(`
+    Found ${unscrapedLinks.length} unscraped links, starting rescrape for timing ${timing}`);
+    if (count === 0) {
+        return res.status(200).json({ success: 1, message: 'OK', data: unscrapedLinks, count });
+    }
+    // Add to queue
+    rescrapeLinksQueue.add(
+        'rescrape_links_job',
+        { links: unscrapedLinks, timing },
+        {
+            priority: 1,
+            attempts: 1,
+            backoff: { type: 'exponential', delay: 60 * 1000 },
+            removeOnComplete: true,
+        }
+    );
+    return res.status(200).json({ success: 1, message: 'OK', data: unscrapedLinks, count });
 });
 
 export default {

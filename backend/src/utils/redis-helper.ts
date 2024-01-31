@@ -1,5 +1,6 @@
 import config from '@/config/config';
 import logger from '@/config/logger';
+import Bull from 'bull';
 import { createClient } from 'redis';
 
 class Redis {
@@ -49,10 +50,14 @@ class Redis {
 }
 export default new Redis();
 
-export const redisBullConfig = {
+export const redisBullConfig: Bull.QueueOptions = {
     redis: {
         host: config.redis.host,
         port: config.redis.port,
         password: config.redis.password,
+    },
+    settings: {
+        stalledInterval: 30000,
+        guardInterval: 5000,
     },
 };

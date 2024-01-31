@@ -31,7 +31,7 @@ async function singleLinkQueueJob(job: SingleLinkJobData, done: Bull.DoneCallbac
                     endTime: new Date(),
                 },
             });
-            done(null, data);
+            done(null);
         }
         const link = await prisma.links.findUnique({
             where: {
@@ -85,7 +85,7 @@ async function singleLinkQueueJob(job: SingleLinkJobData, done: Bull.DoneCallbac
             },
         });
         if (!link) {
-            logger.error('Link not found');
+            logger.error('Link not found', job.hash, job.timing);
             await prisma.cronhistory.update({
                 where: {
                     id: cronHistoryRes.id,

@@ -11,7 +11,6 @@ export const postToSlack = async (text: string) => {
         if (res.status === 200) {
             logger.info('Slack message sent', { text });
         }
-        return res;
     } catch (error) {
         logger.error('Error in sending slack message', error);
     }
