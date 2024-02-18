@@ -1,6 +1,6 @@
 import prisma from '@/client';
 import logger from '@/config/logger';
-import { dailyQueue } from '@/jobs/daily-links';
+import { dailyQueue, reQueueFailedLinks } from '@/jobs/daily-links';
 import { monthlyQueue } from '@/jobs/monthly-links';
 import { rescrapeLinksQueue } from '@/jobs/rescrape';
 import { singleLinkQueue } from '@/jobs/single-link';
@@ -14,6 +14,7 @@ const startCron = catchAsync(async (req, res) => {
     try {
         logger.info(`Start cron start`);
         const { timing } = await trackerValidation.startCron.parseAsync(req.body);
+        postToSlack(`Starting cron for ${timing}`);
         if (timing === 'DAILY') {
             await dailyQueue.add('daily_scrape_job', {
                 priority: 1,
@@ -48,7 +49,14 @@ const startCron = catchAsync(async (req, res) => {
 const singleLinkCron = catchAsync(async (req, res) => {
     try {
         logger.info('Starting single link cron');
-        const { timing, hash } = await trackerValidation.singleLinkCron.parseAsync(req.body);
+        const { timing, hash, failedLinks } = await trackerValidation.singleLinkCron.parseAsync(
+            req.body
+        );
+        if (failedLinks) {
+            logger.info('Requeueing failed links', { failedLinks });
+            await reQueueFailedLinks(failedLinks);
+            return res.status(200).json({ success: 1, message: 'OK' });
+        }
         logger.info('Adding single link cron job', { timing, hash });
         await singleLinkQueue.add(
             'single_link_scrape_job',
@@ -117,6 +125,7 @@ const getMultiplePresignedURLs = catchAsync(async (req, res) => {
 
 const scheduledRescrape = catchAsync(async (req, res) => {
     logger.info('Starting scheduled rescrape');
+    postToSlack('Starting scheduled rescrape');
     const { timing } = await trackerValidation.rescrape.parseAsync(req.body);
     // Get links which do not have linkdata in last three days
     const unscrapedLinks = await prisma.links.findMany({

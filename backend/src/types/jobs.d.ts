@@ -25,6 +25,7 @@ export interface SingleLinkJobData {
     endTime?: Date;
     hash: string;
     timing: links_timing;
+    isFailedLinkJob?: boolean;
 }
 
 export interface AddLinkJobData {

@@ -67,7 +67,7 @@ export const redisBullConfig: Bull.QueueOptions = {
         password: config.redis.password,
     },
     settings: {
-        stalledInterval: 30000,
-        guardInterval: 5000,
+        stalledInterval: 6000,
+        guardInterval: 15000,
     },
 };

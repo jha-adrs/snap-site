@@ -1,22 +1,31 @@
 // Job that handles scraping for all daily links
 import prisma from '@/client';
 import logger from '@/config/logger';
+import { fullScrapeCluster } from '@/scripts/scraper';
 import { SingleLinkJobData } from '@/types/jobs';
-import PuppeteerCluster from '@/utils/puppeteer';
+//import PuppeteerCluster from '@/utils/puppeteer';
 import { redisBullConfig } from '@/utils/redis-helper';
 import Bull from 'bull';
 import Queue from 'bull';
-
+import { Cluster } from 'puppeteer-cluster';
+import Redis from '@/utils/redis-helper';
 export const singleLinkQueue = new Queue('singleLinkScrapeQueue', redisBullConfig);
 
-async function singleLinkQueueJob(job: SingleLinkJobData, done: Bull.DoneCallback) {
+async function singleLinkQueueJob(
+    job: SingleLinkJobData,
+    done: Bull.DoneCallback,
+    cluster: Cluster
+) {
     // Get all data of links and start job
     try {
         logger.info('Starting singleLinkQueue job', job.hash);
         // Complete job here
         async function onCompleteFn(data: any) {
             logger.info('Completed scraping job', data);
-            await PuppeteerCluster.closeCluster();
+            if (data?.success) {
+                Redis.deleteKey(`reQueueFailedLinks-${job.hash}`);
+            }
+            //await PuppeteerCluster.closeCluster();
             await prisma.cronhistory.update({
                 where: {
                     id: data.cronHistoryId,
@@ -31,6 +40,7 @@ async function singleLinkQueueJob(job: SingleLinkJobData, done: Bull.DoneCallbac
                     endTime: new Date(),
                 },
             });
+
             done(null);
         }
         const link = await prisma.links.findUnique({
@@ -67,7 +77,6 @@ async function singleLinkQueueJob(job: SingleLinkJobData, done: Bull.DoneCallbac
             },
         });
         logger.info('Found link', link);
-
         const cronHistoryRes = await prisma.cronhistory.create({
             data: {
                 links: {
@@ -103,14 +112,26 @@ async function singleLinkQueueJob(job: SingleLinkJobData, done: Bull.DoneCallbac
             throw new Error('Link not found in db');
             return false;
         }
-        PuppeteerCluster.fullScrape({
-            url: link.url,
-            timing: link.timing,
-            cronHistoryId: cronHistoryRes.id,
-            includeParams: link.domains.includeParams,
-            onCompleteFn,
-            params: link.params || '',
-        });
+        // PuppeteerCluster.fullScrape({
+        //     url: link.url,
+        //     timing: link.timing,
+        //     cronHistoryId: cronHistoryRes.id,
+        //     includeParams: link.domains.includeParams,
+        //     onCompleteFn,
+        //     params: link.params || '',
+        // });
+        await cluster.queue(
+            {
+                url: link.url,
+                timing: link.timing,
+                cronHistoryId: cronHistoryRes.id,
+                includeParams: link.domains.includeParams,
+                onCompleteFn,
+                params: link.params || '',
+            },
+            fullScrapeCluster
+        );
+
         logger.info('Single Link scrape res');
         return true;
     } catch (error) {
