@@ -174,9 +174,13 @@ export async function fullScrapeCluster({ page, data }: FullScrapeClusterType) {
         const finalScrapingUrl = data.includeParams ? data.url : urlObj.origin + urlObj.pathname;
         const userAgent = new userAgents({ deviceCategory: 'desktop' });
         await page.setUserAgent(userAgent.toString());
-        await page.setDefaultNavigationTimeout(2 * 60 * 1000);
-        await page.goto(finalScrapingUrl, { waitUntil: 'networkidle2' });
+        //await page.setDefaultNavigationTimeout(2 * 60 * 1000);
+        await page.goto(finalScrapingUrl, {
+            waitUntil: ['domcontentloaded', 'networkidle2'],
+            timeout: 60000,
+        });
         // Wait for the page to load
+        await page.keyboard.press('Escape');
         const html = await page.content();
         const screenshot = await page.screenshot({ fullPage: true });
         const smallScreenshot = await page.screenshot({ fullPage: false });
@@ -265,5 +269,7 @@ export async function fullScrapeCluster({ page, data }: FullScrapeClusterType) {
             });
         }
         throw error;
+    } finally {
+        await page.close();
     }
 }

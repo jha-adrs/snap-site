@@ -6,12 +6,11 @@ import axios from 'axios';
 export const postToSlack = async (text: string) => {
     try {
         const res = await axios.post(config.slack.webhookURL, {
-            text: `:robot_face:  ${text}\n Env:(${config.env})`,
+            text: `${text}\n Env:(${config.env})`,
         });
         if (res.status === 200) {
             logger.info('Slack message sent', { text });
         }
-        return res;
     } catch (error) {
         logger.error('Error in sending slack message', error);
     }

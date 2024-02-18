@@ -1,5 +1,6 @@
 import config from '@/config/config';
 import logger from '@/config/logger';
+import Bull from 'bull';
 import { createClient } from 'redis';
 
 class Redis {
@@ -14,7 +15,7 @@ class Redis {
             },
         });
 
-        client.connect();
+        //client.connect();
         client.on('error', (err) => {
             console.error('Redis Error', err);
             throw new Error(err);
@@ -25,6 +26,16 @@ class Redis {
         });
         this.redisClient = client;
     }
+    async getClient() {
+        if (!this.redisClient || !this.redisClient.isOpen) {
+            logger.info('Redis client is closed');
+            await this.redisClient.connect();
+        } else {
+            logger.info('Redis client is open');
+        }
+        return this.redisClient;
+    }
+
     async addKey(key: string, value: any, ttl?: number) {
         logger.info('Adding key value', { key, value });
         if (!this.redisClient || !this.redisClient.isOpen) {
@@ -49,10 +60,14 @@ class Redis {
 }
 export default new Redis();
 
-export const redisBullConfig = {
+export const redisBullConfig: Bull.QueueOptions = {
     redis: {
         host: config.redis.host,
         port: config.redis.port,
         password: config.redis.password,
+    },
+    settings: {
+        stalledInterval: 6000,
+        guardInterval: 15000,
     },
 };

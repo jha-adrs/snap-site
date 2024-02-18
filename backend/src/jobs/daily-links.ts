@@ -8,6 +8,8 @@ import Queue from 'bull';
 import { singleLinkQueue } from './single-link';
 import getHash from '@/utils/link-shortener';
 import config from '@/config/config';
+import { postToSlack } from '@/utils/slack';
+import Redis from '@/utils/redis-helper';
 
 export const dailyQueue = new Queue('dailyScrapeQueue', redisBullConfig);
 const linkStatus: { [key: string]: boolean } = {};
@@ -93,6 +95,7 @@ async function dailyQueueJob(job: Bull.Job, done: Bull.DoneCallback) {
                         },
                     });
                 }
+                postToSlack('All links completed');
                 return done(null, { success: 1, message: 'All links completed' });
             } else if (failedLinksCount === linksRes.length) {
                 logger.error('All links failed');
@@ -109,6 +112,7 @@ async function dailyQueueJob(job: Bull.Job, done: Bull.DoneCallback) {
                         },
                     });
                 }
+                postToSlack('All links failed');
                 return done(new Error('All links failed'));
             } else if (suceessLinksCount + failedLinksCount === linksRes.length) {
                 logger.warn('Some links failed');
@@ -127,6 +131,9 @@ async function dailyQueueJob(job: Bull.Job, done: Bull.DoneCallback) {
                 }
                 // Queue the failed links again
                 reQueueFailedLinks(failedLinks);
+                postToSlack(
+                    `Some links failed, requeuing them , count: ${suceessLinksCount}, failed: ${failedLinksCount}, total: ${linksRes.length}`
+                );
                 return done(null, { success: 0, message: 'Some links failed' });
             } else {
                 logger.info('Continuing');
@@ -183,13 +190,15 @@ async function dailyQueueJob(job: Bull.Job, done: Bull.DoneCallback) {
     }
 }
 
-async function reQueueFailedLinks(failedLinks: string[]) {
+export async function reQueueFailedLinks(failedLinks: string[]) {
     logger.info('Requeueing failed links', { failedLinks });
+    postToSlack(`Requeueing failed links for daily job`);
     failedLinks.forEach(async (link) => {
         const { hashedLink } = await getHash(link, config.scraper.hashLength);
+        await Redis.addKey(`reQueueFailedLinks-${hashedLink}`, link, 86400);
         await singleLinkQueue.add(
             'single_link_scrape_job',
-            { timing: 'DAILY', hash: hashedLink },
+            { timing: 'DAILY', hash: hashedLink, isFailedLinkJob: true },
             {
                 priority: 1,
                 attempts: 3,

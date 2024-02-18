@@ -7,7 +7,8 @@ export const startCron = z.object({
 
 export const singleLinkCron = z.object({
     timing: z.enum(['DAILY', 'WEEKLY', 'MONTHLY']),
-    hash: z.string().length(config.scraper.hashLength),
+    hash: z.string().length(config.scraper.hashLength).optional(),
+    failedLinks: z.array(z.string()).optional(),
 });
 
 export const getPresignedURL = z.object({

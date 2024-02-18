@@ -62,6 +62,7 @@ model domains {
   userdomainmap      userdomainmap[]
 
   @@index([domain], map: "Domains_domain_idx")
+  @@index([id], map: "Domains_id_idx")
 }
 
 model linkdata {
@@ -83,6 +84,7 @@ model linkdata {
   @@unique([hashedUrl, createdAt], map: "LinkData_hashedUrl_createdAt_key")
   @@index([createdAt], map: "LinkData_createdAt_idx")
   @@index([hashedUrl], map: "LinkData_hashedUrl_idx")
+  @@index([id], map: "LinkData_id_idx")
 }
 
 model links {
@@ -107,6 +109,7 @@ model links {
   @@index([domainId], map: "Links_domainId_idx")
   @@index([hashedUrl], map: "Links_hashedUrl_idx")
   @@index([isActive])
+  @@index([id])
 }
 
 model notifications {
@@ -144,22 +147,26 @@ model session {
 }
 
 model user {
-  id            String          @id
-  name          String?
-  email         String          @unique(map: "User_email_key")
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  role          user_role       @default(USER)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime
-  account       account[]
-  bookmarks     bookmarks[]
-  notifications notifications[]
-  organization  organization?
-  session       session[]
-  userdomainmap userdomainmap[]
-  userlinkmap   userlinkmap[]
+  id                 String               @id
+  name               String?
+  email              String               @unique(map: "User_email_key")
+  emailVerified      DateTime?
+  image              String?
+  password           String?
+  role               user_role            @default(USER)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime
+  account            account[]
+  bookmarks          bookmarks[]
+  notifications      notifications[]
+  organization       organization?
+  session            session[]
+  user_login_history user_login_history[]
+  userdomainmap      userdomainmap[]
+  userlinkmap        userlinkmap[]
+
+  @@index([email], map: "User_email_key_idx")
+  @@index([id], map: "User_id_idx")
 }
 
 model userdomainmap {
@@ -239,6 +246,20 @@ model failedcronlinks {
 
   @@index([hashedUrl], map: "FailedCronLinks_hashedUrl_idx")
   @@index([linkId], map: "FailedCronLinks_linkId_fkey")
+}
+
+model user_login_history {
+  id         Int       @id @default(autoincrement())
+  userId     String
+  ipAddress  String?
+  loginTime  DateTime  @default(now())
+  logoutTime DateTime?
+  failed     Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime
+  user       user      @relation(fields: [userId], references: [id], map: "UserLoginHistory_userId_fkey")
+
+  @@index([userId], map: "UserLoginHistory_userId_fkey")
 }
 
 enum cron_timing {

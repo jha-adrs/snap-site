@@ -24,7 +24,8 @@
     "docker:dev-db:stop": "docker-compose -f docker-compose.only-db-dev.yml down",
     "build": "rimraf build && tsc -p tsconfig.json && tscpaths -p tsconfig.json -s . -o ./build",
     "cz": "cz",
-    "jobs:index": "nodemon -r tsconfig-paths/register -r ts-node src/jobs/index.ts"
+    "jobs:index": "nodemon -r tsconfig-paths/register -r ts-node src/jobs/index.ts",
+    "jobs:rescrape": "nodemon -r tsconfig-paths/register -r ts-node src/jobs/rescrape.ts"
   },
   "devDependencies": {
     "@commitlint/cli": "^17.7.1",
